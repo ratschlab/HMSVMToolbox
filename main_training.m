@@ -185,13 +185,13 @@ for iter=1:num_iter,
 
   % save intermediate result if accuracy is higher than before
   % save at every fifth iteration anyway
-  if mean(trn_acc)>max_trn_acc | mod(iter,5)==0,
+  if mean(trn_acc)>max_trn_acc | mod(iter,1)==0,
     max_trn_acc = max(mean(trn_acc), max_trn_acc);
     fprintf('Saving result...\n\n\n');
     fname = sprintf('lsl_iter%i', iter);
     save([PAR.out_dir fname], 'PAR', 'score_plifs', 'transition_scores', 'trn_acc', ...
          'val_acc', 'A', 'b', 'Q', 'f', 'lb', 'ub', 'slacks', 'res', 'num_param', ...
-         'train_exm_ids');
+         'train_exm_ids', 'holdout_exm_ids');
   end
   
   %%%%% solve intermediate QP
@@ -257,7 +257,7 @@ for iter=1:num_iter,
     fname = sprintf('lsl_final');
     save([PAR.out_dir fname], 'PAR', 'score_plifs', 'transition_scores', 'trn_acc', ...
          'val_acc', 'A', 'b', 'Q', 'f', 'lb', 'ub', 'slacks', 'res', 'num_param', ...
-         'train_exm_ids');
+         'train_exm_ids', 'holdout_exm_ids');
     return
   end
 end
