@@ -1,6 +1,8 @@
 function data_file = prepare_data()
 % call like prepare_data()
 
+% written by Georg Zeller, MPI Tuebingen, Germany
+
 NORMALIZE_SIGNAL = 1
 
 base_dir = '~/svn/projects/hmsvm/data/';

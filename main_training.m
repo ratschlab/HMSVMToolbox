@@ -2,6 +2,8 @@ function main_training(PAR)
 % main_training(PAR)
 % For parameter specification (PAR) see model_sel.m.
 
+% written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany
+
 addpath /fml/ag-raetsch/share/software/matlab_tools/shogun
 addpath /fml/ag-raetsch/share/software/matlab_tools/cplex9
 
@@ -152,12 +154,13 @@ for iter=1:num_iter,
     end
     
     %%%%% add constraints for examples which have not been decoded correctly
+    %%%%% or for which a margin violator has been found
     if trn_acc(i)<MAX_ACCURACY,
       v = zeros(1,PAR.num_exm);
       v(i) = 1;
       A = [A; -weight_delta -v];
       b = [b; -loss];
-      new_constraints(i) = 1;
+      new_constraints(i) = 1;      
     end
     
     if VERBOSE>=2,
@@ -165,7 +168,7 @@ for iter=1:num_iter,
               loss, score_delta, slacks(i));
     end
 
-    if VERBOSE>=2  && mod(iter,10)==0,
+    if VERBOSE>=2  && mod(iter,20)==0,
       view_label_seqs(gcf, obs_seq, true_label_seq, pred_path.label_seq, pred_path_mmv.label_seq);
       title(gca, ['Training example ' num2str(train_exm_ids(i))]);
       fprintf('  Example accuracy: %3.2f%%\n', 100*trn_acc(i));
@@ -195,16 +198,21 @@ for iter=1:num_iter,
   end
   
   %%%%% solve intermediate QP
+  size(A)
+  size(b)
+  size(f)
   tic
   [res, lambda, how] = qp_solve(lpenv, Q, f', sparse(A), b, lb', ub', 0, 1, 'bar');
   res = res';
+  size(res)
   slacks = res(num_param+1:end);
+  size(slacks)
   obj = 0.5*res*Q*res' + res*f';
   diff = obj - last_obj;
   % assert that objective is monotonically increasing
-  assert(diff>-10^-6);
+  if ~(diff>-10^-6), keyboard; end
   last_obj = obj;
-  fprintf('objective = %1.2f (diff = %1.2f), sum_slack = %1.2f\n\n', ...
+  fprintf('objective = %1.6f (diff = %1.6f), sum_slack = %1.6f\n\n', ...
           obj, diff, sum(slacks));
 
   %%%%% extract parameters from QP & update model 
@@ -229,7 +237,7 @@ for iter=1:num_iter,
     val_pred_label_seq = val_pred_path.label_seq;
 
     val_acc(j) = mean(val_true_label_seq(1,:)==val_pred_label_seq(1,:));
-    if VERBOSE>=2 && mod(iter,10)==0,
+    if VERBOSE>=2 && mod(iter,20)==0,
       % plot progress
       view_label_seqs(gcf, val_obs_seq, val_true_label_seq, val_pred_label_seq);
       title(gca, ['Hold-out example ' num2str(holdout_exm_ids(j))]);
@@ -241,7 +249,7 @@ for iter=1:num_iter,
   fprintf(['\nIteration %i:\n' ...
            '  LSL validation accuracy:            %2.2f%%\n\n'], ...
           iter, 100*mean(val_acc));
-  if VERBOSE>=2 && mod(iter,10)==0,
+  if VERBOSE>=2 && mod(iter,20)==0,
     fh1 = gcf;
     fhs = eval(sprintf('%s(STATES, score_plifs, transitions, transition_scores);', ...
                        PAR.model_config.func_view_model));

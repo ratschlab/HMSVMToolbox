@@ -2,6 +2,8 @@ function score_plifs = init_parameters(signal, label, STATES, PAR)
 % score_plifs = init_parameters(signal, label, STATES, PAR)
 % initializes the scoring PLiFs
   
+% written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany
+
 LABELS = get_label_set();
 
 % init a score PLiF for each combination of features and states

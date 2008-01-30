@@ -3,6 +3,7 @@
 
 #include <mex.h>
 
+/* written by Gunnar Raetsch & Georg Zeller, MPI Tuebingen, Germany */
 
 struct score_plif_struct
 {

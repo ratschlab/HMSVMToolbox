@@ -1,6 +1,8 @@
 function fh = view_label_seqs(fh, obs_seq, true_label_seq, pred_label_seq, second_label_seq)
 % fh = view_label_seqs(fh, obs_seq, true_label_seq, [pred_label_seq], [second_label_seq])
-  
+
+% written by Georg Zeller, MPI Tuebingen, Germany
+
 LABELS = get_label_set();
   
 if nargin<3, error('at least 3 arguments expected'); end

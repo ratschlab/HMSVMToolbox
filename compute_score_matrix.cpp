@@ -8,6 +8,8 @@
  *
  *		[scr_matrix] = compute_score_matrix(X,score_fcts) 
  *
+ * written by Gunnar Raetsch & Georg Zeller, MPI Tuebingen, Germany
+ *
  *=================================================================*/
 
 

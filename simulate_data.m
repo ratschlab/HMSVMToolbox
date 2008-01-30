@@ -1,14 +1,17 @@
 function data_file = simulate_data()
 % call like simulate_data()
 
+% written by Georg Zeller, MPI Tuebingen, Germany
+
 base_dir = '~/svn/projects/hmsvm/data/';
 
-num_exm = 50;
-exm_len = 500;
-num_features = 5;
-block_len = [10,50];
-num_blocks = [1, 5];
-num_subsets = 5;
+num_exm = 50;           % number of examples
+exm_len = 500;          % length of each example sequence
+num_features = 8;       % total number of features
+num_noise_features = 3; % number features to be pure noise
+block_len = [10,50];    % min an max lentgh of positive block
+num_blocks = [0, 5];    % min and max number of positive block per example
+num_subsets = 5;        % number of subsets for crossvalidation
 
 exm_id = [];
 pos_id = [];
@@ -44,6 +47,11 @@ for i=1:num_features,
   l(d1) = l(d2);
   signal(i,:) = l+3*randn(size(label));
 end
+% substitute some features by pure noise
+ridx = randperm(num_features);
+ridx = ridx(1:num_noise_features);
+signal(ridx,:) = 2*randn(length(ridx), size(label,2));
+fprintf('noise features: %i\n', ridx);
 
 base_dir = '/fml/ag-raetsch/share/projects/enhancer/data/';
 data_file = [base_dir 'hmsvm_data.mat'];

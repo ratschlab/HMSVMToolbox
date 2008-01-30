@@ -2,6 +2,8 @@ function [transitions, a_trans, A] = make_model(transition_scores)
 % function [transitions, a_trans, A] = make_model(transition_scores)
 % definition of the state-transition model
 
+% written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany
+
 % states
 STATES = get_state_set();
 num_states = STATES.num;

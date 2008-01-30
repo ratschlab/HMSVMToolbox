@@ -4,6 +4,8 @@ function [pred_path true_path pred_path_mmv] = decode_Viterbi(obs_seq, transitio
 % calls shogun viterbi to decode i) the best path under current
 % parameters (pred_path) and the maximal margin violator (pred_path_mmv)
 
+% written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany
+
 STATES = eval(sprintf('%s();', ...
                       PAR.model_config.func_get_state_set));
 [transitions, a_trans, A] = eval(sprintf('%s(transition_scores);', ...

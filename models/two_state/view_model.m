@@ -1,6 +1,8 @@
 function fhs = view_model(STATES, score_plifs, transitions, transition_scores)
 % fhs = view_model(STATES, score_plifs, transitions, transition_scores)
-% plots the score plifs
+% plots the score plifs and transition scores
+
+% written by Georg Zeller, MPI Tuebingen, Germany
 
 fn = fieldnames(STATES);
 fn(strmatch('num', fn, 'exact')) = [];

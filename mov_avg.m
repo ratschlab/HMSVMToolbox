@@ -2,6 +2,8 @@ function ma = mov_avg(data, w)
 % computes a moving average under a window of length w, 
 % returned array will have size of data array - w
 
+% written by Georg Zeller, MPI Tuebingen, Germany
+
 if length(data) < w
   ma = [];
 else

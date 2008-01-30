@@ -1,4 +1,7 @@
-function vec = addfracvec(vec, value, limits)
+function vec = add_frac_vec(vec, value, limits)
+% vec = add_frac_vec(vec, value, limits)
+
+% written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany
 
 assert(~any(isnan(limits)));
 idx = sum(limits<=value);

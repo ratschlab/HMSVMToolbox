@@ -6,6 +6,8 @@
 
 #include "score_plif_struct.h"
 
+/* written by Gunnar Raetsch & Georg Zeller, MPI Tuebingen, Germany */
+
 inline bool my_isnan(double x) {
   return x != x;
 }

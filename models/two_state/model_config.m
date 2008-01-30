@@ -1,4 +1,7 @@
 function config = model_config()
+% config = model_config()
+
+% written by Georg Zeller, MPI Tuebingen, Germany
 
 config.name = 'two_state';
   

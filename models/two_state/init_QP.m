@@ -2,6 +2,8 @@ function [A b Q f lb ub slacks res num_param] = init_QP(transition_scores, score
 % [A b Q f lb ub slacks res num_param] = init_QP(transition_scores, score_plifs, STATES, PAR)
 % initialize QP
 
+% written by Gunnar Raetsch & Georg Zeller, MPI Tuebingen, Germany
+
 res = transition_scores;
 score_starts = [];
 cnt = 1;
