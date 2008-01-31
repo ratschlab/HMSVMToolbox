@@ -9,9 +9,10 @@ addpath /fml/ag-raetsch/share/software/matlab_tools/cplex9
 
 
 EXTRA_CHECKS = 0;
-MAX_ACCURACY = 0.99;
-VERBOSE = 2
+VERBOSE = 0
 
+MAX_ACCURACY = 1; % 0.99;
+EPSILON = 10^-5;
 
 assert(isfield(PAR, 'C_small'));
 assert(isfield(PAR, 'C_smooth'));
@@ -50,24 +51,29 @@ rand('seed', 11081979);
 data = load(PAR.data_file, 'pos_id', 'label', 'signal', 'exm_id', 'subset_id');
 PAR.train_idx = find(ismember(data.subset_id, PAR.train_subsets));
 train_exm_ids = unique(data.exm_id(PAR.train_idx));
-fprintf('%i sequences available for training.\n', ...
-        length(train_exm_ids));
+PAR.vald_idx = find(ismember(data.subset_id, PAR.vald_subsets));
+vald_exm_ids = unique(data.exm_id(PAR.vald_idx));
 
-pos_id = data.pos_id(PAR.train_idx);
-label  = data.label(PAR.train_idx);
-signal = data.signal(:,PAR.train_idx);
-exm_id = data.exm_id(PAR.train_idx);
+pos_id = data.pos_id;
+label  = data.label;
+signal = data.signal;
+exm_id = data.exm_id;
 clear data
 
 PAR.num_features = size(signal,1);
 
 r_idx = randperm(length(train_exm_ids));
 train_exm_ids = train_exm_ids(r_idx);
-% hold back some examples for validation
+% for validation use validation sets and unused training examples
 holdout_exm_ids = train_exm_ids(PAR.num_exm+1:end);
+holdout_exm_ids = [holdout_exm_ids vald_exm_ids];
 % use only PAR.num_exm for training
 train_exm_ids = train_exm_ids(1:PAR.num_exm);
 assert(isempty(intersect(train_exm_ids, holdout_exm_ids)));
+fprintf('\nusing %i sequences for training.\n', ...
+        length(train_exm_ids));
+fprintf('using %i sequences for performance estimation.\n\n', ...
+        length(holdout_exm_ids));
 
 
 %%%%% assemble model and score function structs, inititialize QP
@@ -77,7 +83,7 @@ STATES = eval(sprintf('%s();', ...
 [transitions, a_trans] = eval(sprintf('%s();', ...
                       PAR.model_config.func_make_model));
 num_transitions = size(transitions,1);
-transition_scores = randn(1,num_transitions);
+transition_scores = randn(num_transitions,1);
 assert(~any(isnan(transition_scores)));
 assert(all(all(~isnan(transitions))));
 assert(all(all(~isnan(a_trans))));
@@ -119,7 +125,7 @@ for iter=1:num_iter,
           w = [w squeeze(pred_path.plif_weights(t,s,:))'];
         end
       end
-      assert(abs(w*res(1:num_param)' - pred_path.score) < 10^-6);
+      assert(abs(w*res(1:num_param) - pred_path.score) < EPSILON);
       
       w = pred_path_mmv.transition_weights;
       for t=1:size(score_plifs,1), % for all features
@@ -127,7 +133,7 @@ for iter=1:num_iter,
           w = [w squeeze(pred_path_mmv.plif_weights(t,s,:))'];
         end
       end
-      assert(abs(w*res(1:num_param)' - pred_path_mmv.score) < 10^-6);
+      assert(abs(w*res(1:num_param) - pred_path_mmv.score) < EPSILON);
     end
     
     trn_acc(i) = mean(true_path.label_seq==pred_path.label_seq);
@@ -145,17 +151,14 @@ for iter=1:num_iter,
     end
     assert(length(weight_delta) == length(res)-PAR.num_exm);
     assert(length(weight_delta) == length(res)-PAR.num_exm);
-    if norm(weight_delta)==0, assert(loss < 10^-9); end
+    if norm(weight_delta)==0, assert(loss < EPSILON); end
 
-    score_delta = weight_delta*res(1:num_param)';
+    score_delta = weight_delta*res(1:num_param);
 
-    if VERBOSE>=2,
-      fprintf('Training example %i\n', train_exm_ids(i));      
-    end
     
     %%%%% add constraints for examples which have not been decoded correctly
-    %%%%% or for which a margin violator has been found
-    if trn_acc(i)<MAX_ACCURACY,
+    %%%%% and for which a margin violator has been found
+    if score_delta + slacks(i) < loss - EPSILON && trn_acc(i)<MAX_ACCURACY,
       v = zeros(1,PAR.num_exm);
       v(i) = 1;
       A = [A; -weight_delta -v];
@@ -164,20 +167,18 @@ for iter=1:num_iter,
     end
     
     if VERBOSE>=2,
-      fprintf('    loss = %6.2f  diff = %8.2f  slack = %6.2f\n', ...
+      fprintf('Training example %i\n', train_exm_ids(i));      
+      fprintf('  example accuracy: %3.2f%%\n', 100*trn_acc(i));
+      fprintf('  loss = %6.2f  diff = %8.2f  slack = %6.2f\n', ...
               loss, score_delta, slacks(i));
-    end
-
-    if VERBOSE>=2  && mod(iter,20)==0,
-      view_label_seqs(gcf, obs_seq, true_label_seq, pred_path.label_seq, pred_path_mmv.label_seq);
-      title(gca, ['Training example ' num2str(train_exm_ids(i))]);
-      fprintf('  Example accuracy: %3.2f%%\n', 100*trn_acc(i));
-      if trn_acc(i)<MAX_ACCURACY,
-        fprintf('    generated new constraint\n');
-      else
-        fprintf('    generated new constraint\n');      
+      if new_constraints(i),
+        fprintf('  generated new constraint\n', train_exm_ids(i));      
       end
-      pause
+      if mod(iter,15)==0,
+        view_label_seqs(gcf, obs_seq, true_label_seq, pred_path.label_seq, pred_path_mmv.label_seq);
+        title(gca, ['Training example ' num2str(train_exm_ids(i))]);
+        pause
+      end
     end
   end
   fprintf(['\nIteration %i:\n' ...
@@ -198,19 +199,17 @@ for iter=1:num_iter,
   end
   
   %%%%% solve intermediate QP
-  size(A)
-  size(b)
-  size(f)
   tic
-  [res, lambda, how] = qp_solve(lpenv, Q, f', sparse(A), b, lb', ub', 0, 1, 'bar');
-  res = res';
-  size(res)
+  [res, lambda, how] = qp_solve(lpenv, Q, f, sparse(A), b, lb, ub, 0, 1, 'bar');
   slacks = res(num_param+1:end);
-  size(slacks)
-  obj = 0.5*res*Q*res' + res*f';
+  obj = 0.5*res'*Q*res + res'*f;
   diff = obj - last_obj;
-  % assert that objective is monotonically increasing
-  if ~(diff>-10^-6), keyboard; end
+  % output warning if objective is not monotonically increasing
+  if diff < -EPSILON,
+    warning(sprintf('decrease in objective function %f by %f', obj, diff));
+    keyboard
+  end
+  
   last_obj = obj;
   fprintf('objective = %1.6f (diff = %1.6f), sum_slack = %1.6f\n\n', ...
           obj, diff, sum(slacks));
@@ -221,7 +220,7 @@ for iter=1:num_iter,
   q = num_transitions;
   for t=1:size(score_plifs,1), % for all features
     for s=1:size(score_plifs,2), % for all states
-      score_plifs(t,s).scores = res(q+1:q+PAR.num_plif_nodes);
+      score_plifs(t,s).scores = res(q+1:q+PAR.num_plif_nodes)';
       q = q + PAR.num_plif_nodes;
     end
   end
@@ -237,7 +236,7 @@ for iter=1:num_iter,
     val_pred_label_seq = val_pred_path.label_seq;
 
     val_acc(j) = mean(val_true_label_seq(1,:)==val_pred_label_seq(1,:));
-    if VERBOSE>=2 && mod(iter,20)==0,
+    if VERBOSE>=2 && mod(iter,15)==0,
       % plot progress
       view_label_seqs(gcf, val_obs_seq, val_true_label_seq, val_pred_label_seq);
       title(gca, ['Hold-out example ' num2str(holdout_exm_ids(j))]);
@@ -249,7 +248,7 @@ for iter=1:num_iter,
   fprintf(['\nIteration %i:\n' ...
            '  LSL validation accuracy:            %2.2f%%\n\n'], ...
           iter, 100*mean(val_acc));
-  if VERBOSE>=2 && mod(iter,20)==0,
+  if VERBOSE>=2 && mod(iter,15)==0,
     fh1 = gcf;
     fhs = eval(sprintf('%s(STATES, score_plifs, transitions, transition_scores);', ...
                        PAR.model_config.func_view_model));
@@ -258,14 +257,13 @@ for iter=1:num_iter,
   end  
   
   % save and terminate if objective does not change significantly
-  if diff < obj/10^6,
-    diff
-    obj
+  if all(new_constraints==0) || diff < obj/10^6,
     fprintf('Saving result...\n\n\n');
     fname = sprintf('lsl_final');
     save([PAR.out_dir fname], 'PAR', 'score_plifs', 'transition_scores', 'trn_acc', ...
          'val_acc', 'A', 'b', 'Q', 'f', 'lb', 'ub', 'slacks', 'res', 'num_param', ...
          'train_exm_ids', 'holdout_exm_ids');
+    keyboard
     return
   end
 end

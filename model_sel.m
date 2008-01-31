@@ -1,12 +1,13 @@
 % model selection
+
+% written by Georg Zeller, MPI Tuebingen, Germany
+
 param_names = {'C_small', 'C_smooth', 'C_coupling', ...
                'num_exm', 'train_subsets'}
 
 parameters = [ ...
-    1,  10,   0,  10, 1; ...
+    0.5,  5,   0,  25,  1,2,3; ...
              ];
-
-assert(size(parameters,2) == length(param_names));
 
 dr_base = ['/fml/ag-raetsch/share/projects/enhancer/segmentation/'...
            'hmsvm_result_' datestr(now,'yyyy-mm-dd_HHhMM')]
@@ -35,7 +36,11 @@ for i=1:size(parameters,1),
   end
   
   if isfield(PAR, 'train_subsets'),
-    PAR.vald_subsets = mod(PAR.train_subsets,5) + 1;
+    assert(isequal(param_names{end}, 'train_subsets'));
+    if length(param_names) < size(parameters,2),
+      PAR.train_subsets = parameters(i,length(param_names):end);
+    end
+    PAR.vald_subsets = mod(max(PAR.train_subsets),5) + 1;
     PAR.test_subsets = setdiff([1 2 3 4 5], ...
                                [PAR.train_subsets PAR.vald_subsets]);
   end

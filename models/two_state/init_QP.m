@@ -10,7 +10,7 @@ cnt = 1;
 for f=1:size(score_plifs,1), % for all features
   for s=1:size(score_plifs,2), % for all states
     score_starts(cnt) = length(res)+1;
-    res = [res score_plifs(f,s).scores]; 
+    res = [res; score_plifs(f,s).scores']; 
     cnt = cnt + 1;
   end
 end
@@ -42,9 +42,9 @@ for i=1:length(score_starts)-1,
   end 
 end
 
-f = [zeros(1,length(res)) ones(1,PAR.num_exm)];
-lb = [-INF*ones(1,length(res)) zeros(1,PAR.num_exm)];
-ub = [INF*ones(1,length(res)) INF*ones(1,PAR.num_exm)];
+f = [zeros(length(res),1); ones(PAR.num_exm,1)];
+lb = [-INF*ones(length(res),1); zeros(PAR.num_exm,1)];
+ub = [INF*ones(length(res),1); INF*ones(PAR.num_exm,1)];
 
-slacks = zeros(1,PAR.num_exm);
-res = [res slacks];
+slacks = zeros(PAR.num_exm,1);
+res = [res; slacks];
