@@ -5,11 +5,11 @@ function data_file = simulate_data()
 
 base_dir = '~/svn/projects/hmsvm/data/';
 
-num_exm = 100;           % number of examples
-exm_len = 100;          % length of each example sequence
-num_features = 8;       % total number of features
+num_exm = 50;           % number of examples
+exm_len = 200;          % length of each example sequence
+num_features = 10;      % total number of features
 num_noise_features = 3; % number features to be pure noise
-block_len = [5,30];     % min an max lentgh of positive block
+block_len = [10, 50];   % min an max lentgh of positive block
 num_blocks = [0, 5];    % min and max number of positive block per example
 num_subsets = 5;        % number of subsets for crossvalidation
 

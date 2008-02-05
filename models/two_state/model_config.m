@@ -11,6 +11,7 @@ config.func_states_to_labels = 'states_to_labels';
 config.func_make_model = 'make_model';
 config.func_init_parameters = 'init_parameters';
 config.func_init_QP = 'init_QP';
+config.func_init_LP = 'init_LP';
 config.func_calc_loss_matrix = 'calc_loss_matrix';
 
 config.func_view_model = 'view_model';

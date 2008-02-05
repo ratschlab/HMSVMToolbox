@@ -88,4 +88,3 @@ PAR.num_param       = num_param;
 PAR.num_aux         = num_aux;
 PAR.num_opt_var     = num_param+num_aux+PAR.num_exm;
 
-% eof

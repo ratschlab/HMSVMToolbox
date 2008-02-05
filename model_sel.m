@@ -2,12 +2,16 @@
 
 % written by Georg Zeller, MPI Tuebingen, Germany
 
-param_names = {'C_small', 'C_smooth', 'C_coupling', ...
-               'num_exm', 'train_subsets'}
+crossvalidation_subsets = [1, 2, 3, 4, 5];
 
-parameters = [ ...
-    0.5,  5,   0,  25,  1,2,3; ...
-             ];
+param_names = {'C_small', 'C_smooth', 'C_coupling', ...
+               'num_exm', 'train_subsets', 'optimization'}
+
+parameters = { ...
+    [5],  [5], [0], [25], [1, 2, 3], 'LP'; ...
+    [0.1],  [1], [0], [25], [1, 2, 3], 'QP'; ...
+%    [0.1], [1], [0], [25], [1, 2, 3], 'QP'; ...
+             };
 
 dr_base = ['/fml/ag-raetsch/share/projects/enhancer/segmentation/'...
            'hmsvm_result_' datestr(now,'yyyy-mm-dd_HHhMM')]
@@ -17,12 +21,6 @@ data_file = ['/fml/ag-raetsch/share/projects/enhancer/data/' ...
 
 JOB_INFO = [];
 for i=1:size(parameters,1),
-  fprintf('Training model %i...\n', i);
-  for j=1:length(param_names),
-    fprintf('  %s = %f\n', param_names{j}, parameters(i,j));
-  end
-  fprintf('\n\n');
-  
   PAR = [];
   % constant parameters
   PAR.out_dir = [dr_base '_model' num2str(i) '/'];
@@ -31,18 +29,27 @@ for i=1:size(parameters,1),
   PAR.num_plif_nodes = 20;
   
   % parameters for which the best model is selected
+  fprintf('Training model %i...\n', i);
   for j=1:length(param_names),
-    PAR = setfield(PAR, param_names{j}, parameters(i,j));    
+    if length(parameters{i,j}) == 1,
+      fprintf('  %s = %f\n', param_names{j}, parameters{i,j});
+    else
+      p_str = [];
+      for k=1:length(parameters{i,j}),
+        p_str = [p_str sprintf('%f ', parameters{i,j}(k))];
+      end
+      fprintf('  %s = %s\n', param_names{j}, p_str);
+    end
+    PAR = setfield(PAR, param_names{j}, parameters{i,j});
   end
+  fprintf('\n\n');
   
   if isfield(PAR, 'train_subsets'),
-    assert(isequal(param_names{end}, 'train_subsets'));
-    if length(param_names) < size(parameters,2),
-      PAR.train_subsets = parameters(i,length(param_names):end);
-    end
-    PAR.vald_subsets = mod(max(PAR.train_subsets),5) + 1;
-    PAR.test_subsets = setdiff([1 2 3 4 5], ...
-                               [PAR.train_subsets PAR.vald_subsets]);
+    assert(all(ismember(PAR.train_subsets, crossvalidation_subsets)));
+    holdout_subsets = setdiff(crossvalidation_subsets, PAR.train_subsets);
+    assert(length(holdout_subsets)>=2);
+    PAR.vald_subsets = holdout_subsets(1);
+    PAR.test_subsets = holdout_subsets(2:end);
   end
   disp(PAR)
   
