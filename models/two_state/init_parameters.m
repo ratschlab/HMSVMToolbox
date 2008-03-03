@@ -1,6 +1,6 @@
-function score_plifs = init_parameters(signal, label, STATES, PAR)
-% score_plifs = init_parameters(signal, label, STATES, PAR)
-% initializes the scoring PLiFs
+function [score_plifs transition_scores] = init_parameters(signal, label, state_model, PAR)
+% [score_plifs transition_scores] = init_parameters(signal, label, state_model, PAR)
+% initializes the feature scoring PLiFs and transition scores
   
 % written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany
 
@@ -17,12 +17,22 @@ for f=1:num_features,
   limits = round((limits(1:end-1)+limits(2:end))/2);
   limits = s(limits);
 
-  for s=1:STATES.num,
+  for s=1:length(state_model),
     score_plifs(f,s).limits = limits;
     score_plifs(f,s).scores = zeros(size(limits));
-    score_plifs(f,s).dim = s;
+    score_plifs(f,s).dim = (f-1)*num_features + s;
   end
 end
 
-%view_model(STATES, score_plifs);
+% init scores for transitions specified to have a score in make_model
+for i=1:length(state_model),
+  assert(length(state_model(i).successors) ...
+         == length(state_model(i).trans_scores));
+  idx = state_model(i).trans_scores;
+  idx(idx==0) = [];
+  transition_scores(idx) = 0;
+end
+transition_scores = transition_scores';
+
+%view_model(state_model, score_plifs, transition_scores);
 %keyboard

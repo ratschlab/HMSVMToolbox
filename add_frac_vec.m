@@ -3,9 +3,10 @@ function vec = add_frac_vec(vec, value, limits)
 
 % written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany
 
-assert(~any(isnan(limits)));
-idx = sum(limits<=value);
+%assert(~any(isnan(limits)));
+%assert(~any(isinf(limits)));
 
+idx = sum(limits<=value);
 if idx==0,
   vec(1) = vec(1)+1;
 elseif idx==length(limits),

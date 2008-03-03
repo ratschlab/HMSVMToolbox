@@ -1,5 +1,5 @@
-function [A b f lb ub slacks res PAR] = init_LP(transition_scores, score_plifs, STATES, PAR)
-% [A b f lb ub slacks res PAR] = init_LP(transition_scores, score_plifs, STATES, PAR)
+function [A b f lb ub slacks res PAR] = init_LP(transition_scores, score_plifs, state_model, PAR)
+% [A b f lb ub slacks res PAR] = init_LP(transition_scores, score_plifs, state_model, PAR)
 % initialize LP
 
 % written by Gunnar Raetsch & Georg Zeller, MPI Tuebingen, Germany
@@ -8,17 +8,37 @@ function [A b f lb ub slacks res PAR] = init_LP(transition_scores, score_plifs, 
 %%%   i) transition scores
 res = transition_scores;
 num_transition = length(res);
-%%%   ii) y-values of PLiF supporting points (feature scoring functions)
+
+%   ii) y-values of PLiF supporting points (feature scoring functions)
 score_starts = [];
 cnt = 0;
-for f=1:size(score_plifs,1), % for all features
-  for s=1:size(score_plifs,2), % for all states
-    score_starts(cnt+1) = length(res)+1;
-    assert(length(score_plifs(f,s).scores) == PAR.num_plif_nodes);
-    res = [res; score_plifs(f,s).scores']; 
-    cnt = cnt + 1;
+for i=1:length(state_model), % for all states
+  sc_idx = state_model(i).feature_scores;
+  if ~isempty(sc_idx),
+    assert(size(sc_idx,1) == PAR.num_features);
+    for j=1:size(sc_idx,1),
+      f = sc_idx(j,1);
+      s = sc_idx(j,2);
+      idx = (num_transition ...
+             + (s-1)*PAR.num_features*PAR.num_plif_nodes ...
+             + (f-1)*PAR.num_plif_nodes) ...
+            + (1:PAR.num_plif_nodes);
+      
+      assert(all(score_plifs(j,i).scores==0));
+      assert(length(score_plifs(j,i).scores) == PAR.num_plif_nodes);
+      res(idx) = score_plifs(j,i).scores'; 
+      score_starts(cnt+1) = idx(1);
+      cnt = cnt + 1;
+    end
+  else
+    for j=1:size(score_plifs,1), % for all features
+      assert(all(score_plifs(j,i).scores==0));
+      assert(length(score_plifs(j,i).scores) == PAR.num_plif_nodes);
+    end
   end
 end
+assert(isequal(unique(score_starts), ...
+               num_transition+1:PAR.num_plif_nodes:length(res)));
 % not a real score_start, but convenient for loops 
 score_starts(end+1) = length(res)+1;
 num_param = length(res);
@@ -28,16 +48,12 @@ num_plif_scores = num_param-num_transition;
 %%%        via constraints (not learning parameters per se)
 % auxiliary variables to keep transitions small
 aux_starts_small = [];
-cnt = 1;
-aux_starts_small(cnt) = length(res)+1;
+aux_starts_small(1) = length(res)+1;
 res = [res; zeros(num_transition,1)]; 
 % auxiliary variables to keep plifs small
-for f=1:size(score_plifs,1), % for all features
-  for s=1:size(score_plifs,2), % for all states
-    aux_starts_small(cnt+1) = length(res)+1;
-    res = [res; zeros(PAR.num_plif_nodes,1)]; 
-    cnt = cnt + 1;
-  end
+for i=1:length(score_starts)-1, 
+  aux_starts_small(i+1) = length(res)+1;
+  res = [res; zeros(PAR.num_plif_nodes,1)]; 
 end
 % not a real aux_start, but convenient for loops
 aux_starts_small(end+1) = length(res)+1;
@@ -47,13 +63,9 @@ assert(length(aux_starts_small) == length(score_starts)+1);
 
 % auxiliary variables to bound variance of plifs
 aux_starts_smooth = [];
-cnt = 0;
-for f=1:size(score_plifs,1), % for all features
-  for s=1:size(score_plifs,2), % for all states
-    aux_starts_smooth(cnt+1) = length(res)+1;
-    res = [res; zeros(PAR.num_plif_nodes-1,1)]; 
-    cnt = cnt + 1;
-  end
+for i=1:length(score_starts)-1, 
+  aux_starts_smooth(i) = length(res)+1;
+  res = [res; zeros(PAR.num_plif_nodes-1,1)]; 
 end
 % not a real aux_start, but convenient for loops 
 aux_starts_smooth(end+1) = length(res)+1;

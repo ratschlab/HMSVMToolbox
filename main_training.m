@@ -10,8 +10,8 @@ addpath /fml/ag-raetsch/share/software/matlab_tools/cplex9
 EXTRA_CHECKS = 1;
 VERBOSE = 1
 
-MAX_ACCURACY = 1; % 0.99;
-EPSILON = 10^-5;
+MAX_ACCURACY = 0.99;
+EPSILON = 10^-6;
 
 assert(isfield(PAR, 'C_small'));
 assert(isfield(PAR, 'C_smooth'));
@@ -73,33 +73,24 @@ fprintf('using %i sequences for performance estimation.\n\n', ...
 %%%%% assemble model and score function structs,
 %%%%% inititialize optimization problem 
 LABELS = get_label_set;
-%STATES = eval(sprintf('%s();', ...
-%                      PAR.model_config.func_get_state_set));
-%transitions = eval(sprintf('%s();', ...
-%                      PAR.model_config.func_make_model));
+state_model = eval(sprintf('%s(PAR);', ...
+                           PAR.model_config.func_make_model));
 
-[state_model transitions] = eval(sprintf('%s();', ...
-                                         PAR.model_config.func_make_model));
-
-num_transitions = size(transitions,1);
-transition_scores = randn(num_transitions,1);
-assert(~any(isnan(transition_scores)));
-assert(all(all(~isnan(transitions))));
-
-score_plifs = eval(sprintf('%s(signal, label, STATES, PAR);', ...
-                                   PAR.model_config.func_init_parameters));
+[score_plifs transition_scores] = eval(sprintf('%s(signal, label, state_model, PAR);', ...
+                                               PAR.model_config.func_init_parameters));
 assert(~any(isnan([score_plifs.limits])));
 assert(~any(isnan([score_plifs.scores])));
+assert(~any(isnan(transition_scores)));
 
 lpenv = cplex_license(1);
 switch PAR.optimization,
  case 'QP',
   [A b Q f lb ub slacks res PAR] ...
-      = eval(sprintf('%s(transition_scores, score_plifs, STATES, PAR);', ...
+      = eval(sprintf('%s(transition_scores, score_plifs, state_model, PAR);', ...
                      PAR.model_config.func_init_QP));
  case 'LP',
   [A b f lb ub slacks res PAR] ...
-      = eval(sprintf('%s(transition_scores, score_plifs, STATES, PAR);', ...
+      = eval(sprintf('%s(transition_scores, score_plifs, state_model, PAR);', ...
                    PAR.model_config.func_init_LP));
   how = lp_set_param(lpenv, 'CPX_PARAM_PREDUAL', 1, 1);
   assert(isequal(how, 'OK'));
@@ -131,41 +122,27 @@ for iter=1:num_iter,
         = decode_Viterbi(obs_seq, transition_scores, score_plifs, ...
                          PAR, true_label_seq);
     if EXTRA_CHECKS,
-      w = pred_path.transition_weights;
-      for t=1:size(score_plifs,1), % for all features
-        for s=1:size(score_plifs,2), % for all states
-          w = [w squeeze(pred_path.plif_weights(t,s,:))'];
-        end
-      end
+      w = weights_to_vector(pred_path.transition_weights, ...
+                            pred_path.plif_weights, state_model, PAR);
       assert(abs(w*res(1:PAR.num_param) - pred_path.score) < EPSILON);
-      
-      w = pred_path_mmv.transition_weights;
-      for t=1:size(score_plifs,1), % for all features
-        for s=1:size(score_plifs,2), % for all states
-          w = [w squeeze(pred_path_mmv.plif_weights(t,s,:))'];
-        end
-      end
+  
+      w = weights_to_vector(pred_path_mmv.transition_weights, ...
+                            pred_path_mmv.plif_weights, state_model, PAR);
       assert(abs(w*res(1:PAR.num_param) - pred_path_mmv.score) < EPSILON);
     end
-    
     trn_acc(i) = mean(true_path.label_seq==pred_path.label_seq);
-    
-    loss = sum(pred_path_mmv.loss);
 
-    weight_delta = [true_path.transition_weights ...
-                    - pred_path_mmv.transition_weights];
-    for t=1:size(score_plifs,1), % for all features
-      for s=1:size(score_plifs,2), % for all states
-        weight_delta = [weight_delta, ...
-                        [squeeze(true_path.plif_weights(t,s,:))' ...
-                        - squeeze(pred_path_mmv.plif_weights(t,s,:))']];
-      end
-    end
+    w_p = weights_to_vector(true_path.transition_weights, ...
+                            true_path.plif_weights, state_model, PAR);
+    w_n = weights_to_vector(pred_path_mmv.transition_weights, ...
+                            pred_path_mmv.plif_weights, state_model, PAR);
+    weight_delta = w_p - w_n;
     assert(length(weight_delta) == PAR.num_param);
+
+    loss = sum(pred_path_mmv.loss);
     if norm(weight_delta)==0, assert(loss < EPSILON); end
 
     score_delta = weight_delta*res(1:PAR.num_param);
-
     
     %%%%% add constraints for examples which have not been decoded correctly
     %%%%% and for which a margin violator has been found
@@ -215,27 +192,25 @@ for iter=1:num_iter,
    case 'QP',
     [res, lambda, how] = qp_solve(lpenv, Q, f, sparse(A), b, lb, ub, 0, 1, 'bar');
     if ~isequal(how, 'OK'),
-     warning(sprintf('Optimizer problem: %s', how));
-     keyboard 
+      error(sprintf('Optimizer problem: %s', how));
     end
     obj = 0.5*res'*Q*res + f'*res;
    case 'LP',
     [res, lambda, how] = lp_solve(lpenv, f, sparse(A), b, lb, ub, 0, 1, 'bar');
     if ~isequal(how, 'OK'),
-     warning(sprintf('Optimizer problem: %s', how));
-     keyboard 
+      error(sprintf('Optimizer problem: %s', how));
     end
     obj = f'*res;
    otherwise,
     error(sprintf('unknown optimization: %s', PAR.optimization));
   end
   fprintf('\nSolving the optimization problem took %3.2f sec\n', toc);
+  assert(length(res) == PAR.num_param+PAR.num_aux+PAR.num_exm);
   slacks = res(end-PAR.num_exm+1:end);
   diff = obj - last_obj;
   % output warning if objective is not monotonically increasing
   if diff < -EPSILON,
-    warning(sprintf('decrease in objective function %f by %f', obj, diff));
-    keyboard
+    error(sprintf('decrease in objective function %f by %f', obj, diff));
   end
   
   last_obj = obj;
@@ -244,16 +219,8 @@ for iter=1:num_iter,
 
   %%%%% extract parameters from optimization problem & update model 
   %%%%% (i.e. transition scores & score PLiFs)
-  transition_scores = res(1:PAR.num_trans_score);
-  q = PAR.num_trans_score;
-  for t=1:size(score_plifs,1), % for all features
-    for s=1:size(score_plifs,2), % for all states
-      score_plifs(t,s).scores = res(q+1:q+PAR.num_plif_nodes)';
-      q = q + PAR.num_plif_nodes;
-    end
-  end
-  assert(q == PAR.num_param);
-  assert(length(res) == PAR.num_param+PAR.num_aux+PAR.num_exm);
+  [transition_scores, score_plifs] = res_to_scores(res, state_model, ...
+                                                   score_plifs, PAR);
   
   %%%%% check prediction accuracy on holdout examples
   for j=1:length(holdout_exm_ids),
@@ -278,7 +245,7 @@ for iter=1:num_iter,
           iter, 100*mean(val_acc));
   if VERBOSE>=2 && iter>=10,
     fh1 = gcf;
-    fhs = eval(sprintf('%s(STATES, score_plifs, transitions, transition_scores);', ...
+    fhs = eval(sprintf('%s(state_model, score_plifs, transition_scores);', ...
                        PAR.model_config.func_view_model));
     keyboard
     figure(fh1);
@@ -289,7 +256,7 @@ for iter=1:num_iter,
   progress(iter).gen_constraints = new_constraints';
   progress(iter).objective = obj;
   
-  % save and terminate if objective does not change significantly
+  % save and terminate if no more constraints are generated
   if all(new_constraints==0),% || diff < obj/10^6,
     fprintf('Saving result...\n\n\n');
     fname = sprintf('lsl_final');
@@ -307,10 +274,12 @@ for iter=1:num_iter,
       legend({'validation accuracy', 'training accuracy', ...
               'objective value'}, 'Location', 'SouthEast');
       grid on
-      if VERBOSE>=2,
-        eval(sprintf('%s(STATES, score_plifs, transitions, transition_scores);', ...
+%      if VERBOSE>=2,
+        eval(sprintf('%s(state_model, score_plifs, transition_scores);', ...
                      PAR.model_config.func_view_model));
-      end
+        figure
+        plot(res)
+%      end
       keyboard
     end    
     return

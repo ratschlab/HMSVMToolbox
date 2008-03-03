@@ -9,4 +9,3 @@ STATES.start    = 1;
 STATES.stop     = 2;
 STATES.negative = 3;
 STATES.positive = 4;
-STATES.num = length(fieldnames(STATES));
