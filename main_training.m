@@ -85,11 +85,11 @@ assert(~any(isnan(transition_scores)));
 lpenv = cplex_license(1);
 switch PAR.optimization,
  case 'QP',
-  [A b Q f lb ub slacks res PAR] ...
+  [A b Q f lb ub slacks res res_map PAR] ...
       = eval(sprintf('%s(transition_scores, score_plifs, state_model, PAR);', ...
                      PAR.model_config.func_init_QP));
  case 'LP',
-  [A b f lb ub slacks res PAR] ...
+  [A b f lb ub slacks res res_map PAR] ...
       = eval(sprintf('%s(transition_scores, score_plifs, state_model, PAR);', ...
                    PAR.model_config.func_init_LP));
   how = lp_set_param(lpenv, 'CPX_PARAM_PREDUAL', 1, 1);
@@ -99,6 +99,7 @@ switch PAR.optimization,
   error(sprintf('unknown optimization: %s', PAR.optimization));
 end
 assert(length(res) == PAR.num_opt_var);
+assert(all(size(res_map) == size(score_plifs)));
 
 
 %%%%% start iterative training
@@ -123,19 +124,23 @@ for iter=1:num_iter,
                          PAR, true_label_seq);
     if EXTRA_CHECKS,
       w = weights_to_vector(pred_path.transition_weights, ...
-                            pred_path.plif_weights, state_model, PAR);
+                            pred_path.plif_weights, state_model, ...
+                            res_map, PAR);
       assert(abs(w*res(1:PAR.num_param) - pred_path.score) < EPSILON);
   
       w = weights_to_vector(pred_path_mmv.transition_weights, ...
-                            pred_path_mmv.plif_weights, state_model, PAR);
+                            pred_path_mmv.plif_weights, state_model, ...
+                            res_map, PAR);
       assert(abs(w*res(1:PAR.num_param) - pred_path_mmv.score) < EPSILON);
     end
     trn_acc(i) = mean(true_path.label_seq==pred_path.label_seq);
 
     w_p = weights_to_vector(true_path.transition_weights, ...
-                            true_path.plif_weights, state_model, PAR);
+                            true_path.plif_weights, state_model, ...
+                            res_map, PAR);
     w_n = weights_to_vector(pred_path_mmv.transition_weights, ...
-                            pred_path_mmv.plif_weights, state_model, PAR);
+                            pred_path_mmv.plif_weights, state_model, ...
+                            res_map, PAR);
     weight_delta = w_p - w_n;
     assert(length(weight_delta) == PAR.num_param);
 
@@ -219,7 +224,7 @@ for iter=1:num_iter,
 
   %%%%% extract parameters from optimization problem & update model 
   %%%%% (i.e. transition scores & score PLiFs)
-  [transition_scores, score_plifs] = res_to_scores(res, state_model, ...
+  [transition_scores, score_plifs] = res_to_scores(res, state_model, res_map, ...
                                                    score_plifs, PAR);
   
   %%%%% check prediction accuracy on holdout examples

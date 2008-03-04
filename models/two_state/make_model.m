@@ -76,19 +76,71 @@ a_trans = a_trans';
 a_trans = a_trans(idx,:);
 
 %%% specify whether feature scoring functions are learned
-%%% for a particular state, second column has to be equal to state_id
-state_model(STATES.start).feature_scores    = [];
-state_model(STATES.stop).feature_scores     = [];
-score_cnt = 1;
-state_model(STATES.negative).feature_scores = [[1:PAR.num_features]', ...
-                    score_cnt*ones(PAR.num_features,1)];
-score_cnt = score_cnt + 1;
-state_model(STATES.positive).feature_scores = [[1:PAR.num_features]', ...
-                    score_cnt*ones(PAR.num_features,1)];
+%%% expected is a 0/1 vector with nonzero entries for the features to be
+%%% scored by functions included in the learning process
+%state_model(STATES.start).learn_scores     = ones(PAR.num_features,1);
+%state_model(STATES.stop).learn_scores      = ones(PAR.num_features,1);
+% proxy scoring function test / score coupling test 
+state_model(STATES.start).learn_scores     = ones(PAR.num_features,1);
+state_model(STATES.stop).learn_scores      = ones(PAR.num_features,1);
+state_model(STATES.negative).learn_scores  = ones(PAR.num_features,1);
+state_model(STATES.positive).learn_scores  = ones(PAR.num_features,1);
+
+%%% specify whether scoring functions should be shared between several
+%%% states as a matrix 2 x k, where k is equal to the number of nonzeros
+%%% in learn_scores of the same state
+%%% first column is a feature index and second column indicates the state
+%%% id  to which the scoring parameters correspond
+state_model(STATES.start).feature_scores ...
+    = [[1:PAR.num_features]', STATES.start*ones(PAR.num_features,1)];
+state_model(STATES.stop).feature_scores ...
+    = [[1:PAR.num_features]', STATES.stop*ones(PAR.num_features,1)];
+% proxy scoring function test
+%    = [[1:PAR.num_features]', STATES.start*ones(PAR.num_features,1)];
+state_model(STATES.negative).feature_scores ...
+    = [[1:PAR.num_features]', STATES.negative*ones(PAR.num_features,1)];
+% proxy scoring function test
+%    = [[1:PAR.num_features]', STATES.start*ones(PAR.num_features,1)];
+state_model(STATES.positive).feature_scores ...
+    = [[1:PAR.num_features]', STATES.positive*ones(PAR.num_features,1)];
+
+for i=1:length(state_model),
+  assert(size(state_model(i).feature_scores,1) ...
+         == sum(state_model(i).learn_scores));
+end
 
 %%% specify whether feature scoring functions will be coupled via
-%%% regularization terms to those of other states
-state_model(STATES.start).score_coupling    = [];
-state_model(STATES.stop).score_coupling     = [];
-state_model(STATES.negative).score_coupling = [];
-state_model(STATES.positive).score_coupling = [];
+%%% regularization terms to those of other states as a 2 x k matrix where
+%%% k is equal to the number of nonzeros in learn_scores of the same state. 
+%%% first column is a feature index and second column indicates the state
+%%% id  to which the scoring parameters correspond (both should be zero
+%%% if no coupling is desired)
+%%% AVOID TO COUPLE the same pair of states twice as (i,j) and (j,i).
+%%% only feature scoring functions which are not identified with others
+%%% can be coupled
+state_model(STATES.start).score_coupling ...
+    = [[1:PAR.num_features]', STATES.negative*ones(PAR.num_features,1)];
+%    = zeros(sum(state_model(STATES.start).learn_scores),2);
+% coupling test
+state_model(STATES.stop).score_coupling ...
+    = [[1:PAR.num_features]', STATES.negative*ones(PAR.num_features,1)];
+%    = zeros(sum(state_model(STATES.stop).learn_scores),2);
+% coupling test
+state_model(STATES.negative).score_coupling ...
+    = zeros(sum(state_model(STATES.negative).learn_scores),2);
+state_model(STATES.positive).score_coupling ...
+    = zeros(sum(state_model(STATES.positive).learn_scores),2);
+
+for i=1:length(state_model),
+  assert(all(size(state_model(i).score_coupling) ...
+             == size(state_model(i).feature_scores)));
+  for j=1:size(state_model(i).score_coupling,1),
+    f_idx = state_model(i).score_coupling(j,1);
+    s_idx = state_model(i).score_coupling(j,2);
+    if f_idx ~= 0,
+      assert(s_idx ~= 0);
+      assert(state_model(s_idx).feature_scores(j,1) == f_idx);
+      assert(state_model(s_idx).feature_scores(j,2) == s_idx);
+    end
+  end
+end

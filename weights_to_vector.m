@@ -1,10 +1,12 @@
-function w = weights_to_vector(transition_weights, plif_weights, state_model, PAR)
-% w = weights_to_vector(transition_weights, plif_weights, state_model, PAR)
+function w = weights_to_vector(transition_weights, plif_weights, state_model, res_map, PAR)
+% w = weights_to_vector(transition_weights, plif_weights, state_model, res_map, PAR)
 
 num_features = PAR.num_features;
 assert(num_features == size(plif_weights,1));
+assert(num_features == size(res_map,1));
 num_states = length(state_model);
 assert(num_states == size(plif_weights,2));
+assert(num_states == size(res_map,2));
 
 w = zeros(1, PAR.num_param);
 for s=1:num_states,
@@ -19,18 +21,11 @@ assert(sum(w ~= 0) <= PAR.num_trans_score);
 % to obtain the weights for parameters that learned (i.e. optimized)
 % and assemble a w vector corresponding to res (the solution of the
 % optimization problem)
-for i=1:length(state_model), % for all states
-  sc_idx = state_model(i).feature_scores;
-  if ~isempty(sc_idx),
-    for j=1:size(sc_idx,1),
-      f = sc_idx(j,1);
-      s = sc_idx(j,2);
-      idx = (PAR.num_trans_score ...
-             + (s-1)*PAR.num_features*PAR.num_plif_nodes ...
-             + (f-1)*PAR.num_plif_nodes) ...
-            + (1:PAR.num_plif_nodes);
-      
-      w(idx) = w(idx) + squeeze(plif_weights(j,i,:))';
+for i=1:size(res_map,1), % for all features
+  for j=1:size(res_map,2), % for all states
+    if res_map(i,j) ~= 0,
+      idx = res_map(i,j):res_map(i,j)+PAR.num_plif_nodes-1; 
+      w(idx) = w(idx) + squeeze(plif_weights(i,j,:))';
     end
   end
 end

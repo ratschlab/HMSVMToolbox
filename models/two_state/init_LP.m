@@ -1,5 +1,5 @@
-function [A b f lb ub slacks res PAR] = init_LP(transition_scores, score_plifs, state_model, PAR)
-% [A b f lb ub slacks res PAR] = init_LP(transition_scores, score_plifs, state_model, PAR)
+function [A b f lb ub slacks res res_map PAR] = init_LP(transition_scores, score_plifs, state_model, PAR)
+% [A b f lb ub slacks res res_map PAR] = init_LP(transition_scores, score_plifs, state_model, PAR)
 % initialize LP
 
 % written by Gunnar Raetsch & Georg Zeller, MPI Tuebingen, Germany
@@ -9,40 +9,53 @@ function [A b f lb ub slacks res PAR] = init_LP(transition_scores, score_plifs, 
 res = transition_scores;
 num_transition = length(res);
 
-%   ii) y-values of PLiF supporting points (feature scoring functions)
-score_starts = [];
-cnt = 0;
+next_score_start = length(res)+1;
+% mapping (features, states) -> position in res vector
+res_map = zeros(PAR.num_features, length(state_model));
+% coupling ((feature; state); (feature; state))
+coupling_idx = zeros(4,0);
+cnt = 1;
 for i=1:length(state_model), % for all states
-  sc_idx = state_model(i).feature_scores;
-  if ~isempty(sc_idx),
-    assert(size(sc_idx,1) == PAR.num_features);
-    for j=1:size(sc_idx,1),
-      f = sc_idx(j,1);
-      s = sc_idx(j,2);
-      idx = (num_transition ...
-             + (s-1)*PAR.num_features*PAR.num_plif_nodes ...
-             + (f-1)*PAR.num_plif_nodes) ...
-            + (1:PAR.num_plif_nodes);
-      
-      assert(all(score_plifs(j,i).scores==0));
-      assert(length(score_plifs(j,i).scores) == PAR.num_plif_nodes);
-      res(idx) = score_plifs(j,i).scores'; 
-      score_starts(cnt+1) = idx(1);
+  idx = find(state_model(i).learn_scores);
+  for j=1:length(idx),
+    row_idx = state_model(i).feature_scores(j,1);
+    col_idx = state_model(i).feature_scores(j,2);
+    if res_map(row_idx, col_idx) == 0,
+      res_map(row_idx, col_idx) = next_score_start;
+      score_starts(cnt) = next_score_start;
+      next_score_start = next_score_start + PAR.num_plif_nodes;
       cnt = cnt + 1;
     end
-  else
-    for j=1:size(score_plifs,1), % for all features
-      assert(all(score_plifs(j,i).scores==0));
-      assert(length(score_plifs(j,i).scores) == PAR.num_plif_nodes);
+    if i~=col_idx || idx(j)~=row_idx, 
+      res_map(idx(j), i) = res_map(row_idx, col_idx);
+    end
+    if state_model(i).score_coupling(j,1) ~= 0,
+      assert(state_model(i).score_coupling(j,2) ~= 0);
+      coupling_idx = [coupling_idx, [idx(j); ...
+                          i; ...
+                          state_model(i).score_coupling(j,1); ...
+                          state_model(i).score_coupling(j,2)]];
     end
   end
 end
-assert(isequal(unique(score_starts), ...
-               num_transition+1:PAR.num_plif_nodes:length(res)));
 % not a real score_start, but convenient for loops 
-score_starts(end+1) = length(res)+1;
+score_starts(end+1) = next_score_start;
+
+%   ii) y-values of PLiF supporting points (feature scoring functions)
+for t=1:PAR.num_features, % for all features
+  for s=1:length(state_model), % for all states
+    assert(length(score_plifs(t,s).scores) == PAR.num_plif_nodes);
+    if res_map(t,s) == 0,
+      assert(all(score_plifs(t,s).scores==0));
+    else
+      res(res_map(t,s):res_map(t,s)+PAR.num_plif_nodes-1) ...
+          = score_plifs(t,s).scores'; 
+    end
+  end
+end
 num_param = length(res);
-num_plif_scores = num_param-num_transition;
+assert(length(res) == score_starts(end) - 1);
+num_plif_scores = num_param - num_transition;
 
 %%%   iii) auxiliary variables to implement regularizer
 %%%        via constraints (not learning parameters per se)
@@ -72,8 +85,19 @@ aux_starts_smooth(end+1) = length(res)+1;
 num_aux_smooth = length(res) - num_param - num_aux_small;
 assert(num_aux_smooth == aux_starts_smooth(end)-aux_starts_smooth(1));
 assert(length(aux_starts_smooth) == length(score_starts));
+
+% auxiliary variables to couple plifs across states
+aux_starts_coupling = [];
+for i=1:size(coupling_idx,2),
+  aux_starts_coupling(i) = length(res)+1;
+  res = [res; zeros(PAR.num_plif_nodes,1)]; 
+end
+% not a real aux_start, but convenient for loops
+aux_starts_coupling(end+1) = length(res)+1;
+num_aux_coupling = length(res) - num_param - num_aux_small - num_aux_smooth;
 num_aux = length(res) - num_param;
-assert(num_aux == num_aux_small+num_aux_smooth);
+assert(size(coupling_idx,2)*PAR.num_plif_nodes == num_aux_coupling);
+assert(num_aux == num_aux_small+num_aux_smooth+num_aux_coupling);
 
 %%%   iv) slack variables
 slacks = zeros(PAR.num_exm,1);
@@ -84,10 +108,12 @@ INF = 1e20;
 f =  [zeros(num_param,1); ...
       PAR.C_small*ones(num_aux_small,1); ...
       PAR.C_smooth*ones(num_aux_smooth,1); ...
+      PAR.C_coupling*ones(num_aux_coupling,1); ...
       ones(PAR.num_exm,1)];
 lb = [-INF*ones(num_param,1); ...
       zeros(num_aux_small,1); ...
       zeros(num_aux_smooth,1); ...
+      zeros(num_aux_coupling,1); ...
       zeros(PAR.num_exm,1)];
 ub = INF*ones(length(res),1);
 
@@ -101,16 +127,16 @@ aux_idx = aux_starts_small(1):aux_starts_small(2)-1;
 assert(length(aux_idx)==num_transition);
 for i=1:num_transition,
   % bound the absolute values of transition scores by an auxiliary variable
-    %  t_{i} - aux_{i} <= 0
-    % -t_{i} - aux_{i} <= 0
-
-    A(cnt, i)   =  1;
-    A(cnt, aux_idx(i))  = -1;
-    cnt = cnt + 1;
-
-    A(cnt, i)   = -1;
-    A(cnt, aux_idx(i))  = -1;
-    cnt = cnt + 1;
+  %  t_{i} - aux_{i} <= 0
+  % -t_{i} - aux_{i} <= 0
+  
+  A(cnt, i)   =  1;
+  A(cnt, aux_idx(i))  = -1;
+  cnt = cnt + 1;
+  
+  A(cnt, i)   = -1;
+  A(cnt, aux_idx(i))  = -1;
+  cnt = cnt + 1;
 end
 for i=1:length(score_starts)-1,
   sc_idx = score_starts(i):score_starts(i+1)-1;
@@ -131,7 +157,7 @@ for i=1:length(score_starts)-1,
   end 
 end
 
-% smoothness constrains
+% smoothness constraints
 for i=1:length(score_starts)-1,
   sc_idx = score_starts(i):score_starts(i+1)-1;
   aux_idx = aux_starts_smooth(i):aux_starts_smooth(i+1)-1;
@@ -153,11 +179,41 @@ for i=1:length(score_starts)-1,
     cnt = cnt + 1;
   end 
 end
+
+% constraints for score coupling
+for i=1:size(coupling_idx,2),
+  sc_idx_1 = res_map(coupling_idx(1,i), coupling_idx(2,i));
+  sc_idx_1 = sc_idx_1:sc_idx_1+PAR.num_plif_nodes-1;
+  sc_idx_2 = res_map(coupling_idx(3,i), coupling_idx(4,i));
+  sc_idx_2 = sc_idx_2:sc_idx_2+PAR.num_plif_nodes-1;
+  aux_idx = aux_starts_coupling(i):aux_starts_coupling(i+1)-1;
+  assert(length(sc_idx_1) == length(sc_idx_2));
+  assert(length(sc_idx) == length(aux_idx));
+  for j=1:length(aux_idx),
+    % bound the difference between corresponding score value pairs from
+    % above and  below by an auxiliary variable (which is then regularized):
+    %  scr_{i1,j} - scr_{i2,j} - aux_{i,j} <= 0
+    % -scr_{i1,j} + scr_{i2,j} - aux_{i,j} <= 0
+    
+    A(cnt, sc_idx_1(j)) =  1;
+    A(cnt, sc_idx_2(j)) = -1;
+    A(cnt, aux_idx(j))  = -1;
+    cnt = cnt + 1;
+
+    A(cnt, sc_idx_1(j)) = -1;
+    A(cnt, sc_idx_2(j)) =  1;
+    A(cnt, aux_idx(j))  = -1;
+    cnt = cnt + 1;
+  end
+end
 assert(cnt-1 == length(b));
 
 PAR.num_trans_score = length(transition_scores);
 PAR.num_param       = num_param;
 PAR.num_aux         = num_aux;
 PAR.num_opt_var     = num_param+num_aux+PAR.num_exm;
+
+%imagesc(A);
+%keyboard
 
 % eof
