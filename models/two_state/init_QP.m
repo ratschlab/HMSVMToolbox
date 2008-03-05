@@ -24,7 +24,7 @@ for i=1:length(state_model), % for all states
       res_map(row_idx, col_idx) = next_score_start;
       score_starts(cnt) = next_score_start;
       next_score_start = next_score_start + PAR.num_plif_nodes;
-      monotonicity(cnt) = state_models(i).monot_scores(j);
+      monotonicity(cnt) = state_model(i).monot_scores(j);
       cnt = cnt + 1;
     end
     if i~=col_idx || idx(j)~=row_idx, 
