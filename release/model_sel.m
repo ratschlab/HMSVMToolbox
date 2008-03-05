@@ -13,8 +13,7 @@ parameters = { ...
 %    [0.1], [1], [5], [25], [1, 2, 3], 'QP'; ...
              };
 
-dr_base = ['/fml/ag-raetsch/share/projects/enhancer/segmentation/'...
-           'hmsvm_result_' datestr(now,'yyyy-mm-dd_HHhMM')]
+dr_base = ['results/hmsvm_result_' datestr(now,'yyyy-mm-dd_HHhMM')]
 
 data_file = ['/fml/ag-raetsch/share/projects/enhancer/data/' ...
              'hmsvm_data.mat'];
@@ -70,3 +69,4 @@ for i=1:size(parameters,1),
 
   fprintf('\nSubmitted job %i\n\n', length(JOB_INFO));
 end
+
