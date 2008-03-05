@@ -2,7 +2,7 @@ function [state_model, A, a_trans] = make_model(PAR, transition_scores)
 % function [state_model, A, a_trans] = make_model(PAR, transition_scores)
 % definition of the state-transition model
 
-% written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany
+% written by Georg Zeller, MPI Tuebingen, Germany
 
 %%% define state names and corresponding state ids
 STATES = get_state_set();
@@ -75,14 +75,15 @@ a_trans = a_trans';
 [tmp, idx] = sort(a_trans(:,2));
 a_trans = a_trans(idx,:);
 
+
 %%% specify whether feature scoring functions are learned
 %%% expected is a 0/1 vector with nonzero entries for the features to be
 %%% scored by functions included in the learning process
+state_model(STATES.start).learn_scores     = zeros(PAR.num_features,1);
+state_model(STATES.stop).learn_scores      = zeros(PAR.num_features,1);
+% proxy scoring function test / score coupling test 
 %state_model(STATES.start).learn_scores     = ones(PAR.num_features,1);
 %state_model(STATES.stop).learn_scores      = ones(PAR.num_features,1);
-% proxy scoring function test / score coupling test 
-state_model(STATES.start).learn_scores     = ones(PAR.num_features,1);
-state_model(STATES.stop).learn_scores      = ones(PAR.num_features,1);
 state_model(STATES.negative).learn_scores  = ones(PAR.num_features,1);
 state_model(STATES.positive).learn_scores  = ones(PAR.num_features,1);
 
@@ -92,14 +93,18 @@ state_model(STATES.positive).learn_scores  = ones(PAR.num_features,1);
 %%% first column is a feature index and second column indicates the state
 %%% id  to which the scoring parameters correspond
 state_model(STATES.start).feature_scores ...
-    = [[1:PAR.num_features]', STATES.start*ones(PAR.num_features,1)];
+    = zeros(sum(state_model(STATES.start).learn_scores),2);
+% score coupling test
+%    = [[1:PAR.num_features]', STATES.start*ones(PAR.num_features,1)];
 state_model(STATES.stop).feature_scores ...
-    = [[1:PAR.num_features]', STATES.stop*ones(PAR.num_features,1)];
-% proxy scoring function test
+    = zeros(sum(state_model(STATES.stop).learn_scores),2);
+% score coupling test
+%    = [[1:PAR.num_features]', STATES.stop*ones(PAR.num_features,1)];
+% scoring function sharing test
 %    = [[1:PAR.num_features]', STATES.start*ones(PAR.num_features,1)];
 state_model(STATES.negative).feature_scores ...
     = [[1:PAR.num_features]', STATES.negative*ones(PAR.num_features,1)];
-% proxy scoring function test
+% scoring function sharing test
 %    = [[1:PAR.num_features]', STATES.start*ones(PAR.num_features,1)];
 state_model(STATES.positive).feature_scores ...
     = [[1:PAR.num_features]', STATES.positive*ones(PAR.num_features,1)];
@@ -109,6 +114,28 @@ for i=1:length(state_model),
          == sum(state_model(i).learn_scores));
 end
 
+%%% specify monotonicity constraints for feature scoring functions
+%%% as a vector of length k containing +1 (monotonically increasing
+%%% scoring function), -1 (monotonically decreasing) and 0 (no
+%%% monotonicity desired) entries where k is equal to the
+%%% number of nonzeros in learn_scores of the same state.
+%%% will not be considered when scoring functions are shared with
+%%% another states
+state_model(STATES.start).monot_scores ...
+    = zeros(sum(state_model(STATES.start).learn_scores),1);
+state_model(STATES.stop).monot_scores ...
+    = zeros(sum(state_model(STATES.stop).learn_scores),1);
+state_model(STATES.negative).monot_scores ...
+    = zeros(sum(state_model(STATES.negative).learn_scores),1);
+state_model(STATES.positive).monot_scores ...
+    = zeros(sum(state_model(STATES.positive).learn_scores),1);
+
+for i=1:length(state_model),
+  assert(size(state_model(i).feature_scores,1) ...
+         == sum(state_model(i).learn_scores));
+end
+
+
 %%% specify whether feature scoring functions will be coupled via
 %%% regularization terms to those of other states as a 2 x k matrix where
 %%% k is equal to the number of nonzeros in learn_scores of the same state. 
@@ -116,16 +143,16 @@ end
 %%% id  to which the scoring parameters correspond (both should be zero
 %%% if no coupling is desired)
 %%% AVOID TO COUPLE the same pair of states twice as (i,j) and (j,i).
-%%% only feature scoring functions which are not identified with others
+%%% only feature scoring functions which are not shared between states
 %%% can be coupled
 state_model(STATES.start).score_coupling ...
-    = [[1:PAR.num_features]', STATES.negative*ones(PAR.num_features,1)];
-%    = zeros(sum(state_model(STATES.start).learn_scores),2);
+    = zeros(sum(state_model(STATES.start).learn_scores),2);
 % coupling test
+%    = [[1:PAR.num_features]', STATES.negative*ones(PAR.num_features,1)];
 state_model(STATES.stop).score_coupling ...
-    = [[1:PAR.num_features]', STATES.negative*ones(PAR.num_features,1)];
-%    = zeros(sum(state_model(STATES.stop).learn_scores),2);
+    = zeros(sum(state_model(STATES.stop).learn_scores),2);
 % coupling test
+%    = [[1:PAR.num_features]', STATES.negative*ones(PAR.num_features,1)];
 state_model(STATES.negative).score_coupling ...
     = zeros(sum(state_model(STATES.negative).learn_scores),2);
 state_model(STATES.positive).score_coupling ...

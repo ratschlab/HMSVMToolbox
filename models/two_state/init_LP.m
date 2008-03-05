@@ -2,7 +2,7 @@ function [A b f lb ub slacks res res_map PAR] = init_LP(transition_scores, score
 % [A b f lb ub slacks res res_map PAR] = init_LP(transition_scores, score_plifs, state_model, PAR)
 % initialize LP
 
-% written by Gunnar Raetsch & Georg Zeller, MPI Tuebingen, Germany
+% written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany
 
 %%% optimization paramaters: 
 %%%   i) transition scores
@@ -23,6 +23,7 @@ for i=1:length(state_model), % for all states
     if res_map(row_idx, col_idx) == 0,
       res_map(row_idx, col_idx) = next_score_start;
       score_starts(cnt) = next_score_start;
+      monotonicity(cnt) = state_models(i).monot_scores(j);
       next_score_start = next_score_start + PAR.num_plif_nodes;
       cnt = cnt + 1;
     end
@@ -38,6 +39,7 @@ for i=1:length(state_model), % for all states
     end
   end
 end
+assert(length(score_starts) == length(monotonicity));
 % not a real score_start, but convenient for loops 
 score_starts(end+1) = next_score_start;
 
@@ -168,14 +170,23 @@ for i=1:length(score_starts)-1,
     %  scr_{i,j} - scr_{i,j+1} - aux_{i,j} <= 0
     % -scr_{i,j} + scr_{i,j+1} - aux_{i,j} <= 0
 
-    A(cnt, sc_idx(j))   =  1;
-    A(cnt, sc_idx(j+1)) = -1;
-    A(cnt, aux_idx(j))  = -1;
+    % if monotonic scoring functions are desired it suffices to
+    % leave out the auxiliary term, i.e. either
+    % scr_{i,j} - scr_{i,j+1} <= 0 (monotonically increasing) or
+    % -scr_{i,j} + scr_{i,j+1} <= 0 (monotonically decreasing)
+    
+    A(cnt, sc_idx(j))    =  1;
+    A(cnt, sc_idx(j+1))  = -1;
+    if monotonicity(i) ~= +1,
+      A(cnt, aux_idx(j)) = -1;
+    end
     cnt = cnt + 1;
 
-    A(cnt, sc_idx(j))   = -1;
-    A(cnt, sc_idx(j+1)) =  1;
-    A(cnt, aux_idx(j))  = -1;
+    A(cnt, sc_idx(j))    = -1;
+    A(cnt, sc_idx(j+1))  =  1;
+    if monotonicity(i) ~= -1,
+      A(cnt, aux_idx(j)) = -1;
+    end
     cnt = cnt + 1;
   end 
 end
