@@ -81,7 +81,7 @@ assert(~any(isnan([score_plifs.limits])));
 assert(~any(isnan([score_plifs.scores])));
 assert(~any(isnan(transition_scores)));
 
-lpenv = cplex_license();
+lpenv = cplex_license(8);
 switch PAR.optimization,
  case 'QP',
   [A b Q f lb ub slacks res res_map PAR] ...

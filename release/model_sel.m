@@ -15,8 +15,7 @@ parameters = { ...
 
 dr_base = ['results/hmsvm_result_' datestr(now,'yyyy-mm-dd_HHhMM')]
 
-data_file = ['/fml/ag-raetsch/share/projects/enhancer/data/' ...
-             'hmsvm_data.mat'];
+data_file = ['data/hmsvm_simulated_data.mat'];
 
 JOB_INFO = [];
 for i=1:size(parameters,1),
