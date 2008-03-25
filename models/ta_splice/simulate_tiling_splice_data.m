@@ -1,9 +1,6 @@
 function data_file = simulate_tiling_splice_data()
 
-
 % written by Georg Zeller, MPI Tuebingen, Germany
-
-base_dir = '~/svn/projects/hmsvm/data/';
 
 LABEL = get_label_set();
 

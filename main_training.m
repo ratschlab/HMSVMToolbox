@@ -5,7 +5,7 @@ function progress = main_training(PAR)
 % written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany
 
 addpath /fml/ag-raetsch/share/software/matlab_tools/shogun
-addpath /fml/ag-raetsch/share/software/matlab_tools/cplex9
+addpath /fml/ag-raetsch/share/software/matlab_tools/cplex9 %10
 
 EXTRA_CHECKS = 1;
 VERBOSE = 1

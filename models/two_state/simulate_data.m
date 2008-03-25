@@ -3,8 +3,6 @@ function data_file = simulate_data()
 
 % written by Georg Zeller, MPI Tuebingen, Germany
 
-base_dir = '~/svn/projects/hmsvm/data/';
-
 num_exm = 50;           % number of examples
 exm_len = 200;          % length of each example sequence
 num_features = 10;      % total number of features
@@ -53,7 +51,7 @@ ridx = ridx(1:num_noise_features);
 signal(ridx,:) = 2*randn(length(ridx), size(label,2));
 fprintf('noise features: %i\n', ridx);
 
-base_dir = '/fml/ag-raetsch/share/projects/enhancer/data/';
+base_dir = '/fml/ag-raetsch/share/projects/hmsvm_toydata/';
 data_file = [base_dir 'hmsvm_data.mat'];
 save(data_file, 'pos_id', 'label', 'signal', 'exm_id', 'subset_id');
 
