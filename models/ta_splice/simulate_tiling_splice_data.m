@@ -4,37 +4,37 @@ function data_file = simulate_tiling_splice_data()
 
 LABEL = get_label_set();
 
-num_exm = 100;             % number of examples
-min_exm_len = 1000;        % min length of example sequences
-intergenic_boundary = 500; % min length of intergenic regions around genes
+num_exm = 100;              % number of examples
+min_exm_len = 1000;         % min length of example sequences
+intergenic_boundary = 500;  % min length of intergenic regions around genes
 
-num_exons = [0 10];        % min and max number of exons blocks
-exon_len  = [25 500];      % min and max exon length
-intron_len  = [25 250];    % min and max intron length
-probe_len = 25;            % oligonucleotide probe length
-probe_spacing = 35;        % average spacing between subsequent probes
-probe_offcenter_std = 3;   % standard deviation for probe offset from
-                           % window center
+num_exons = [0 10];         % min and max number of exons blocks
+exon_len  = [25 500];       % min and max exon length
+intron_len  = [25 250];     % min and max intron length
+probe_len = 25;             % oligonucleotide probe length
+probe_spacing = 35;         % average spacing between subsequent probes
+probe_offcenter_std = 3;    % standard deviation for probe offset from
+                            % window center
 
-intergenic_mean_I =  6;    % mean intensity of intergenic probes
-intergenic_std_I  =  1;    % standard deviation of intensity of intergenic probes
-intronic_mean_I   =  6;    % mean intensity of intronic probes
-intronic_std_I    =  1;    % standard deviation of intensity of intronic probes
-exonic_mean_I     = 10;    % mean intensity of exonic probes
-intronic_std_I    =  2;    % standard deviation of intensity of exonic probes
-num_exon_levels   = 10;    % number of discrete expression levels
-ambiguous_std_I   =  3;    % standard deviation of intensities of
-                           % probes with ambigous mapping
+intergenic_mean_I =  6;     % mean intensity of intergenic probes
+intergenic_std_I  =  1;     % standard deviation of intensity of intergenic probes
+intronic_mean_I   =  6;     % mean intensity of intronic probes
+intronic_std_I    =  1;     % standard deviation of intensity of intronic probes
+exonic_mean_I     = 10;     % mean intensity of exonic probes
+exonic_std_I      =  2;     % standard deviation of intensity of exonic probes
+num_exon_levels   = 10;     % number of discrete expression levels
+ambiguous_std_I   =  3;     % standard deviation of intensities of
+                            % probes with ambigous mapping
 
-prop_outliers     = 0.2;   % proportion of outlier probes
+prop_outliers     = 0.2;    % proportion of outlier probes
 
-ss_true_mean_score = 0.7;  % mean score of true splice sites   
-ss_true_std_score  = 0.2;  % score standard deviation of true splice sites   
-ss_decoy_mean_score = 0.3; % mean score of decoy splice sites   
-ss_decoy_std_score = 0.2;  % score standard deviation of decoy splice sites   
-prop_ss_decoys = 19;       % proportion of decoy splice sites 
+ss_true_mean_score = 0.7;   % mean score of true splice sites   
+ss_true_std_score  = 0.15;  % score standard deviation of true splice sites   
+ss_decoy_mean_score = 0.3;  % mean score of decoy splice sites   
+ss_decoy_std_score = 0.15;  % score standard deviation of decoy splice sites   
+prop_ss_decoys = 19;        % proportion of decoy splice sites 
 
-num_subsets = 5;           % number of subsets for crossvalidation
+num_subsets = 5;            % number of subsets for crossvalidation
 
 
 exon_level_mean_I = linspace(intronic_mean_I, ...
@@ -47,6 +47,7 @@ label = [];
 subset_id = [];
 splice_pos = [];
 splice_score = [];
+splice_label = [];
 for i=1:num_exm,
   % generate random gene model
   num_exo = num_exons(1) + ceil((num_exons(2)-num_exons(1)).*rand(1)) - 1;
@@ -74,13 +75,13 @@ for i=1:num_exm,
   
   % generate tiling
   num_probes = floor(exm_len/probe_spacing);
-  probe_centers = probe_spacing.*(1:num_probes) - floor(probe_sacing/2);
+  probe_centers = probe_spacing.*(1:num_probes) - floor(probe_spacing/2);
   probe_pos = probe_centers + max([floor(probe_spacing/2)*ones(1,num_probes); ...
                                    round(probe_offcenter_std*randn(1,num_probes))]);
 
   % generate label for tiling probes
   hpl = floor(probe_len/2);
-  l = ones(size(probe_pos)) * LABEL.ambigous;
+  l = ones(size(probe_pos)) * LABEL.ambiguous;
   l(probe_pos+hpl <= intergenic_boundary ...
               | probe_pos-hpl >= exm_len-intergenic_boundary+1) = LABEL.intergenic;
   for j=1:num_exo,
@@ -104,12 +105,12 @@ for i=1:num_exm,
   % generate noisy splice site scores
   true_ss_pos  = [exons(2:end,1)' exons(1:end-1,2)'];
   num_true_ss = length(true_ss_pos);
-  num_decoy_ss = round(num_true_ss * prop_ss_decoys)
+  num_decoy_ss = round(num_true_ss * prop_ss_decoys);
   decoy_ss_pos = randperm(exm_len);
-  decoy_ss_pos = decoy_ss_pos(decoy_ss_pos(1:num_ss_decoys));
+  decoy_ss_pos = decoy_ss_pos(decoy_ss_pos(1:num_decoy_ss));
   
   true_ss_score = ss_true_std_score * randn(1,num_true_ss) + ss_true_mean_score; 
-  decoy_ss_score = ss_decoy_std_score * randn(1,num_decoy_ss) + ss_deccoy_mean_score; 
+  decoy_ss_score = ss_decoy_std_score * randn(1,num_decoy_ss) + ss_decoy_mean_score; 
   
   ss_pos = [true_ss_pos decoy_ss_pos];
   ss_score = [true_ss_score decoy_ss_score];
@@ -129,14 +130,24 @@ for i=1:num_exm,
       idx = find(ss_pos > probe_pos(j-1) & ss_pos < probe_pos(j));
     end
     [max_ss_score max_pos] = max(ss_score(idx));
-    exm_splice_score(i) = max_ss_score;
-    exm_splice_pos(i) = ss_pos(idx(max_pos));
-    exm_splice_label(i) = ss_label(idx(max_pos));
+    if ~isempty(max_ss_score),
+      exm_splice_score(j) = max_ss_score;
+      exm_splice_pos(j)   = ss_pos(idx(max_pos));
+      exm_splice_label(j) = ss_label(idx(max_pos));
+    else
+      exm_splice_score(j) = 0;
+      exm_splice_pos(j)   = 0;
+      exm_splice_label(j) = 0;
+    end
   end
+  assert(all(size(exm_splice_score)==size(l)));
+  assert(all(size(exm_splice_pos)==size(l)));
+  assert(all(size(exm_splice_label)==size(l)));
 
   splice_score = [splice_score exm_splice_score];
   splice_pos   = [splice_pos   exm_splice_pos];
   splice_label = [splice_label exm_splice_label];
+  clear exm_splice_score exm_splice_pos exm_splice_label
 end
 
 % generate noisy probe intensities by ...
@@ -171,4 +182,3 @@ data_file = [base_dir 'ta_splice_data.mat'];
 save(data_file, 'pos_id', 'label', 'signal', 'exm_id', 'subset_id', ...
      'splice_score', 'splice_pos', 'splice_label');
 
-keyboard
