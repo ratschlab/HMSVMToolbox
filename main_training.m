@@ -72,7 +72,8 @@ fprintf('using %i sequences for performance estimation.\n\n', ...
 
 %%%%% assemble model and score function structs,
 %%%%% inititialize optimization problem 
-LABELS = get_label_set;
+LABELS = eval(sprintf('%s;', ...
+                      PAR.model_config.func_get_label_set));
 state_model = eval(sprintf('%s(PAR);', ...
                            PAR.model_config.func_make_model));
 
@@ -101,6 +102,16 @@ end
 assert(length(res) == PAR.num_opt_var);
 assert(all(size(res_map) == size(score_plifs)));
 
+if EXTRA_CHECKS,
+  for i=1:length(train_exm_ids),
+    idx = find(exm_id==train_exm_ids(i));
+    true_label_seq = label(idx);
+    obs_seq = signal(:,idx);
+    true_state_seq = eval(sprintf('%s(true_label_seq, state_model, obs_seq);', ...
+                                  PAR.model_config.func_labels_to_states));
+    assert(check_path(true_state_seq, state_model));
+  end
+end
 
 %%%%% start iterative training
 progress = [];
@@ -167,7 +178,7 @@ for iter=1:num_iter,
       if new_constraints(i),
         fprintf('  generated new constraint\n', train_exm_ids(i));      
       end
-      if iter>=10,
+      if iter>=15 && i<=25,
         view_label_seqs(gcf, obs_seq, true_label_seq, pred_path.label_seq, pred_path_mmv.label_seq);
         title(gca, ['Training example ' num2str(train_exm_ids(i))]);
         pause
@@ -236,7 +247,7 @@ for iter=1:num_iter,
     val_pred_label_seq = val_pred_path.label_seq;
 
     val_acc(j) = mean(val_true_label_seq(1,:)==val_pred_label_seq(1,:));
-    if VERBOSE>=2 && iter>=10,
+    if VERBOSE>=2 && iter>=15 && j<=25,
       % plot progress
       view_label_seqs(gcf, val_obs_seq, val_true_label_seq, val_pred_label_seq);
       title(gca, ['Hold-out example ' num2str(holdout_exm_ids(j))]);
@@ -248,7 +259,7 @@ for iter=1:num_iter,
   fprintf(['\nIteration %i:\n' ...
            '  LSL validation accuracy:            %2.2f%%\n\n'], ...
           iter, 100*mean(val_acc));
-  if VERBOSE>=2 && iter>=10,
+  if VERBOSE>=2 && iter>=20,
     fh1 = gcf;
     fhs = eval(sprintf('%s(state_model, score_plifs, transition_scores);', ...
                        PAR.model_config.func_view_model));

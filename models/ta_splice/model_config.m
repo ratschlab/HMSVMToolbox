@@ -3,7 +3,7 @@ function config = model_config()
 
 % written by Georg Zeller, MPI Tuebingen, Germany
 
-config.name = 'two_state';
+config.name = 'ta_splice';
   
 config.func_get_label_set = 'get_label_set';
 config.func_get_state_set = 'get_state_set';

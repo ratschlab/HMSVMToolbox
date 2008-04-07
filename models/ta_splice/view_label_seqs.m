@@ -12,8 +12,9 @@ clf
 hold on
 c = colormap;
 c = c(round(linspace(1,64,size(obs_seq,1))),:);
+glyphs = '.vvd';
 for i=1:size(obs_seq,1),
-  plot(obs_seq(i,:), '.-', 'Color', c(i,:));
+  plot(obs_seq(i,:), glyphs(i), 'Color', c(i,:));
 end
 truth = -ones(size(true_label_seq(1,:)));
 pos_idx = find(true_label_seq==LABELS.exonic);
@@ -22,7 +23,13 @@ neg_idx = find(true_label_seq(1,:)==LABELS.intronic ...
                | true_label_seq(1,:)==LABELS.intergenic);
 truth(neg_idx) = 0;
 idx = union(pos_idx, neg_idx);
-plot(idx, truth(idx)+0.2, 'go-');
+plot(idx, truth(idx)+0.1, 'go-');
+
+truth = -ones(size(true_label_seq(1,:)));
+truth(true_label_seq==LABELS.acc_ss) = -0.3; 
+truth(true_label_seq==LABELS.don_ss) = -0.4;
+truth(true_label_seq==LABELS.double_ss) = -0.6;
+plot(truth, 'go-');
 
 if exist('pred_label_seq', 'var'),
   pred = -ones(size(pred_label_seq(1,:)));
@@ -43,7 +50,7 @@ if exist('second_label_seq', 'var'),
                  | true_label_seq(1,:)==LABELS.intergenic);
   pred(neg_idx) = 0;
   idx = union(pos_idx, neg_idx);
-  plot(idx, pred(idx)+0.2, 'c+-');
+  plot(idx, pred(idx)+0.3, 'c+-');
 end
 
 %axis([0, length(truth)+1 -10 10]);

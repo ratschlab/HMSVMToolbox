@@ -18,9 +18,9 @@ STATES = eval(sprintf('%s();', ...
 
 score_matrix = compute_score_matrix(obs_seq, score_plifs);
 p = -inf(1, num_states);
-p(STATES.start) = 0;
+p(find([state_model.is_start])) = 0;
 q = -inf(1, num_states);
-q(STATES.stop) = 0;
+q(find([state_model.is_stop]))  = 0;
 
 [pred_path.score, state_seq] = sg('best_path_trans_simple', p, q, a_trans, ...
                                   score_matrix, 1);
