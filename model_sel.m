@@ -1,6 +1,6 @@
 % model selection
 
-% written by Georg Zeller, MPI Tuebingen, Germany
+% written by Georg Zeller, MPI Tuebingen, Germany, 2008
 
 crossvalidation_subsets = [1, 2, 3, 4, 5];
 

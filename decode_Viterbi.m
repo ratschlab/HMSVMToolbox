@@ -1,10 +1,12 @@
 function [pred_path true_path pred_path_mmv] = decode_Viterbi(obs_seq, transition_scores, score_plifs, PAR, true_label_seq)
-% [pred_path true_path pred_path_mmv] 
-% = decode_Viterbi(obs_seq, transition_scores, score_plifs, PAR, true_label_seq)
-% calls shogun viterbi to decode i) the best path under current
-% parameters (pred_path) and the maximal margin violator (pred_path_mmv)
 
-% written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany
+% [pred_path true_path pred_path_mmv] 
+%    = decode_Viterbi(obs_seq, transition_scores, score_plifs, PAR, true_label_seq)
+%
+% calls shogun viterbi algorithm to decode i) the best path under current
+% parameters (pred_path) and the maximal margin violator (pred_path_mmv).
+%
+% Written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany, 2008
 
 [state_model, A, a_trans] = eval(sprintf('%s(PAR, transition_scores);', ...
                                          PAR.model_config.func_make_model));

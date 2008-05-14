@@ -1,8 +1,12 @@
 function [transition_weights, plif_weights] = path_weights(state_seq, obs_seq, score_plifs, state_model)
-% [transition_weights, plif_weights] = path_weights(state_seq, obs_seq, score_plifs, state_model)
-% count transitions/plif nodes used by decoded state sequence
 
-% written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany
+% [transition_weights, plif_weights] ...
+%   = path_weights(state_seq, obs_seq, score_plifs, state_model)
+%
+% Counts how often indicidual transitions/plif nodes are used by given
+% state sequence.
+%
+% Written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany, 2008
 
 transition_weights = zeros(length(state_model));
 for i=1:length(state_seq)-1,

@@ -1,9 +1,11 @@
 function check = check_path(path, state_model)
 
-% checks whether the given path can possibly be decoded with the given
-% model
-
-% written by Georg Zeller, MPI Tuebingen, Germany, 2008
+% check = check_path(path, state_model)
+%
+% Checks whether the given path can possibly be decoded with the given
+% state model.
+%
+% Written by Georg Zeller, MPI Tuebingen, Germany, 2008
 
 check = logical(1);
 c = state_model(path(1)).is_start == 1;

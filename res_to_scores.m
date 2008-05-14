@@ -1,5 +1,12 @@
 function [transition_scores, score_plifs] = res_to_scores(res, state_model, res_map, score_plifs, PAR)
-% [transition_scores, score_plifs] = res_to_scores(res, state_model, res_map, score_plifs, PAR)
+
+% [transition_scores, score_plifs] 
+%   = res_to_scores(res, state_model, res_map, score_plifs, PAR)
+%
+% Updates feature scoring functions from the parameter vector (typically
+% obtained as a solution of the intermediate QP/LP).
+%
+% Written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany, 2008
 
 assert(PAR.num_features == size(score_plifs,1));
 assert(length(state_model) == size(score_plifs,2));

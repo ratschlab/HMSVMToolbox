@@ -1,15 +1,14 @@
 function data_file = prepare_data()
-% call like prepare_data()
 
-% written by Georg Zeller, MPI Tuebingen, Germany
+% data_file = prepare_data()
+%
+% Prepares the data for label sequence learning with HM-SVM.
+%
+% Written by Georg Zeller, MPI Tuebingen, Germany, 2008
 
 NORMALIZE_SIGNAL = 1
 
 base_dir = '~/svn/projects/hmsvm/data/';
-% use either
-%load([base_dir 'SEQ']);
-%signal    = SEQ';
-% or
 load([base_dir 'DATA']);
 feature_idx = [7 8 10 12 14 15 21 22];
 signal = DATA(feature_idx,:);

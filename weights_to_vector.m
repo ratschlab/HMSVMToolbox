@@ -1,5 +1,12 @@
 function w = weights_to_vector(transition_weights, plif_weights, state_model, res_map, PAR)
+
 % w = weights_to_vector(transition_weights, plif_weights, state_model, res_map, PAR)
+%
+% Reshapes the weights of individual feature scoring functions and
+% transition weights into a vector (to be able to take the inner product
+% with the parameter vector).
+%
+% Written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany, 2008
 
 num_features = PAR.num_features;
 assert(num_features == size(plif_weights,1));

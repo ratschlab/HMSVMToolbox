@@ -1,8 +1,11 @@
 function progress = main_training(PAR)
-% main_training(PAR)
-% For parameter specification (PAR) see model_sel.m.
 
-% written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany
+% main_trainineg(PAR)
+%
+% Main script for HM-SVM training. For parameter specification (PAR) see
+% model_sel.m.
+%
+% Written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany, 2008
 
 addpath /fml/ag-raetsch/share/software/matlab_tools/shogun
 addpath /fml/ag-raetsch/share/software/matlab_tools/cplex9 %10
@@ -243,6 +246,7 @@ for iter=1:num_iter,
     val_idx = find(exm_id==holdout_exm_ids(j));
     val_obs_seq = signal(:,val_idx);
     val_pred_path = decode_Viterbi(val_obs_seq, transition_scores, score_plifs, PAR);
+    keyboard
     val_true_label_seq = label(val_idx);
     val_pred_label_seq = val_pred_path.label_seq;
 

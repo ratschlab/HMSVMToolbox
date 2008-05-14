@@ -1,17 +1,17 @@
-/*=================================================================
- *
+/*
  * COMPUTE_SCORE_MATRIX.CPP	
  *	    computes a matrix for score cumulation during decoding 
- *          given a training example X, and current score functions
+ *          given a training example X, and feature scoring functions score_fcts
  *
  * The calling syntax is:
  *
  *		[scr_matrix] = compute_score_matrix(X,score_fcts) 
  *
- * written by Gunnar Raetsch & Georg Zeller, MPI Tuebingen, Germany
+ * Compile using
+ *   mex compute_score_matrix.cpp score_plif_struct.cpp -I/fml/ag-raetsch/share/software/matlab/extern/include 
  *
- *=================================================================*/
-
+ * Written by Gunnar Raetsch & Georg Zeller, MPI Tuebingen, Germany
+ */
 
 #include <assert.h>
 #include <stdlib.h>
@@ -20,9 +20,6 @@
 
 #include "mex.h"
 #include "score_plif_struct.h"
-
-// compile using
-// mex compute_score_matrix.cpp score_plif_struct.cpp -I/fml/ag-raetsch/share/software/matlab/extern/include 
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {		  
 
