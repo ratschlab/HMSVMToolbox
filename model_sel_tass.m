@@ -14,17 +14,17 @@ parameters = { ...
 %    [0.1], [1], [5], [100], [1, 2, 3], 'QP'; ...
              };
 
-dr_base = ['/fml/ag-raetsch/share/projects/hm_svm_toydata/results/'...
-           'hmsvm_result_' datestr(now,'yyyy-mm-dd_HHhMM')]
+dr_base = '/fml/ag-raetsch/share/projects/tiling_arrays/ta_splice_simulations/';
 
-data_file = ['/fml/ag-raetsch/share/projects/hmsvm_toydata/ta_splice_data.mat'];
+data_file = [dr_base 'ta_splice_data.mat'];
+dr_base = [dr_base 'hmsvm_result_' datestr(now,'yyyy-mm-dd_HHhMM')];
 
 JOB_INFO = [];
 for i=1:size(parameters,1),
   PAR = [];
   % constant parameters
   PAR.out_dir = [dr_base '_model' num2str(i) '/'];
-  PAR.model_dir = 'models/ta_splice/';
+  PAR.model_dir = 'models/ta_splice_multi_level/';
   PAR.data_file = data_file;
   PAR.num_plif_nodes = 20;
   
