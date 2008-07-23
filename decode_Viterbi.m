@@ -1,4 +1,5 @@
-function [pred_path true_path pred_path_mmv] = decode_Viterbi(obs_seq, transition_scores, score_plifs, PAR, true_label_seq)
+function [pred_path true_path pred_path_mmv] = decode_Viterbi(obs_seq, transition_scores, ...
+                                                  score_plifs, PAR, true_label_seq)
 
 % [pred_path true_path pred_path_mmv] 
 %    = decode_Viterbi(obs_seq, transition_scores, score_plifs, PAR, true_label_seq)

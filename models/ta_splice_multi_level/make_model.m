@@ -82,7 +82,6 @@ for i=1:length(state_model),
          length(state_model(i).trans_scores));
 end
 
-
 % initialize transition matrices and mapping to transition scores
 if ~exist('transition_scores', 'var')
   transition_scores = zeros(1,length(state_model).^2);
@@ -214,5 +213,4 @@ for i=1:length(state_model),
   end
 end
 
-keyboard
 

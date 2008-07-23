@@ -13,7 +13,7 @@ LABEL.genic      = 1;
 LABEL.intronic   = 2;
 LABEL.exonic     = 3;
 
-LABEL.ei_ss     = 5;
-LABEL.ie_ss     = 6;
+LABEL.ei_ss      = 5;
+LABEL.ie_ss      = 6;
 LABEL.no_ss      = 7;
 LABEL.double_ss  = 8;
