@@ -1,8 +1,9 @@
 function [pred_path true_path pred_path_mmv] = decode_Viterbi(obs_seq, transition_scores, ...
-                                                  score_plifs, PAR, true_label_seq)
+                                                  score_plifs, PAR, true_label_seq, true_state_seq)
 
 % [pred_path true_path pred_path_mmv] 
-%    = decode_Viterbi(obs_seq, transition_scores, score_plifs, PAR, true_label_seq)
+%    = decode_Viterbi(obs_seq, transition_scores, score_plifs,
+%    PAR[, true_label_seq true_state_seq])
 %
 % calls shogun viterbi algorithm to decode i) the best path under current
 % parameters (pred_path) and the maximal margin violator (pred_path_mmv).
@@ -32,18 +33,19 @@ pred_path.state_seq = pred_state_seq;
 pred_path.label_seq = eval(sprintf('%s(pred_state_seq, state_model);', ...
                                    PAR.model_config.func_states_to_labels));
 
-%%%% if true_state_seq is given (for training examples),
-%%%% also used transitions and plif weights are computed
+%%%% if true_label_seq is given (for training examples),
+%%%% true_state_seq has to be specified as well.
+%%%% In this case used transitions and plif weights are computed
 %%%% for the true path, pred_path is augmented with a loss
 %%%% and a struct pred_path_mmv is returned corresponding 
 %%%% to the maximal margin violator under the given loss
 
 if exist('true_label_seq', 'var'),
   assert(length(true_label_seq)==size(obs_seq,2));
-
+  assert(size(true_state_seq)==size(true_label_seq));
+  
   %%%%% transition and plif weights for the true path 
-  true_path.state_seq = eval(sprintf('%s(true_label_seq, state_model, obs_seq);', ...
-                                     PAR.model_config.func_labels_to_states));
+  true_path.state_seq = treu_state_seq;
   true_path.label_seq = true_label_seq;
   [true_path.transition_weights, true_path.plif_weights] ...
       = path_weights(true_path.state_seq, obs_seq, score_plifs, state_model);

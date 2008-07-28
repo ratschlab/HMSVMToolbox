@@ -51,10 +51,11 @@ train_exm_ids = unique(data.exm_id(PAR.train_idx));
 PAR.vald_idx = find(ismember(data.subset_id, PAR.vald_subsets));
 vald_exm_ids = unique(data.exm_id(PAR.vald_idx));
 
-pos_id = data.pos_id;
-label  = data.label;
-signal = data.signal;
-exm_id = data.exm_id;
+pos_id      = data.pos_id;
+label       = data.label;
+signal      = data.signal;
+exm_id      = data.exm_id;
+state_label = nan(size(label));
 clear data
 
 PAR.num_features = size(signal,1);
@@ -105,15 +106,16 @@ end
 assert(length(res) == PAR.num_opt_var);
 assert(all(size(res_map) == size(score_plifs)));
 
-if EXTRA_CHECKS,
-  for i=1:length(train_exm_ids),
-    idx = find(exm_id==train_exm_ids(i));
-    true_label_seq = label(idx);
-    obs_seq = signal(:,idx);
-    true_state_seq = eval(sprintf('%s(true_label_seq, state_model, obs_seq);', ...
-                                  PAR.model_config.func_labels_to_states));
+for i=1:length(train_exm_ids),
+  idx = find(exm_id==train_exm_ids(i));
+  true_label_seq = label(idx);
+  obs_seq = signal(:,idx);
+  true_state_seq = eval(sprintf('%s(true_label_seq, state_model, obs_seq);', ...
+                                PAR.model_config.func_labels_to_states));
+  if EXTRA_CHECKS,
     assert(check_path(true_state_seq, state_model));
   end
+  state_label(idx) = true_state_seq;
 end
 
 %%%%% start iterative training
@@ -131,11 +133,12 @@ for iter=1:num_iter,
     idx = find(exm_id==train_exm_ids(i));
     obs_seq = signal(:,idx);
     true_label_seq = label(idx);
+    true_state_seq = state_label(idx);
     
     %%%%% Viterbi decoding
     [pred_path true_path pred_path_mmv] ...
         = decode_Viterbi(obs_seq, transition_scores, score_plifs, ...
-                         PAR, true_label_seq);
+                         PAR, true_label_seq, true_state_seq);
     if EXTRA_CHECKS,
       w = weights_to_vector(pred_path.transition_weights, ...
                             pred_path.plif_weights, state_model, ...
