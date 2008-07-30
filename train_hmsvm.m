@@ -12,6 +12,9 @@ addpath /fml/ag-raetsch/share/software/matlab_tools/cplex9 %10
 
 EXTRA_CHECKS = 1;
 VERBOSE = 1
+if VERBOSE>=1,
+  fh1 = figure;
+end
 
 MAX_ACCURACY = 0.99;
 EPSILON = 10^-6;
@@ -262,11 +265,9 @@ for iter=1:num_iter,
            '  LSL validation accuracy:            %2.2f%%\n\n'], ...
           iter, 100*mean(val_acc));
   if VERBOSE>=2 && iter>=20,
-    fh1 = gcf;
     fhs = eval(sprintf('%s(state_model, score_plifs, transition_scores);', ...
                        PAR.model_config.func_view_model));
     keyboard
-    figure(fh1);
   end  
 
   progress(iter).trn_acc = trn_acc';
@@ -274,6 +275,28 @@ for iter=1:num_iter,
   progress(iter).gen_constraints = new_constraints';
   progress(iter).objective = obj;
   
+  if VERBOSE>=1,
+    figure(fh1);
+    clf
+    hold on
+    v_acc = mean([progress.val_acc]);
+    tr_acc = mean([progress.trn_acc]);
+    r_obj = [progress.objective] ./ max([progress.objective]);
+    plot(v_acc, '.-r');
+    plot(tr_acc, '.-b');
+    plot(r_obj, '.--k');
+    plot(iter, v_acc(end), 'dr');
+    plot(iter, tr_acc(end), 'db');
+    plot(iter, r_obj(end), 'dk');
+
+    xlabel('iteration');
+    ylabel('accuracy / relative objective');
+    legend({'validation accuracy', 'training accuracy', ...
+            'objective value'}, 'Location', 'SouthEast');
+    grid on
+    axis([0 iter+1 0 1]);
+    pause(1);
+  end    
   % save and terminate if no more constraints are generated
   if all(new_constraints==0),% || diff < obj/10^6,
     fprintf('Saving result...\n\n\n');
@@ -281,25 +304,14 @@ for iter=1:num_iter,
     save([PAR.out_dir fname], 'PAR', 'score_plifs', 'transition_scores', 'trn_acc', ...
          'val_acc', 'A', 'b', 'Q', 'f', 'lb', 'ub', 'slacks', 'res', ...
          'train_exm_ids', 'holdout_exm_ids');
-    if VERBOSE>=1,
+   if VERBOSE>=2,
       figure
-      hold on
-      plot(mean([progress.val_acc]), '.-r');
-      plot(mean([progress.trn_acc]), '.-b');
-      plot([progress.objective] ./ max([progress.objective]), '.--k');
-      xlabel('iteration');
-      ylabel('accuracy / relative objective');
-      legend({'validation accuracy', 'training accuracy', ...
-              'objective value'}, 'Location', 'SouthEast');
-      grid on
-%      if VERBOSE>=2,
-        eval(sprintf('%s(state_model, score_plifs, transition_scores);', ...
-                     PAR.model_config.func_view_model));
-        figure
-        plot(res)
-%      end
+      eval(sprintf('%s(state_model, score_plifs, transition_scores);', ...
+                   PAR.model_config.func_view_model));
+      figure
+      plot(res)
       keyboard
-    end    
+    end
     return
   end
 end
