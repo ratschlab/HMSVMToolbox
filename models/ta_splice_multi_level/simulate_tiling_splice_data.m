@@ -112,6 +112,7 @@ for i=1:num_exm,
   rs = ceil((num_subsets).*rand(1));
   subset_id = [subset_id rs*ones(1,num_probes)];
 
+  keyboard
 
   % generate noisy splice site scores
   true_don_pos = exons(1:end-1,2)';
