@@ -3,6 +3,8 @@
 %
 % Written by Georg Zeller, MPI Tuebingen, Germany, 2008
 
+USE_RPROC = 0;
+
 crossvalidation_subsets = [1, 2, 3, 4, 5];
 
 param_names = {'C_small', 'C_smooth', 'C_coupling', ...
@@ -65,20 +67,21 @@ for i=1:size(parameters,1),
   end
   disp(PAR)
   
-  % RPROC settings
-  RPROC_MEMREQ             = 2000;
-  RPROC_OPT.express        = 0;
-  RPROC_OPT.immediately_bg = 0;
-  RPROC_OPT.immediately    = 0;
-  RPROC_OPT.arch           = 64; % take only 64 bit nodes
-  RPROC_OPT.identifier     = sprintf('GZ_TrES_model%i_',i);
-  RPROC_TIME               = 12*(PAR.num_exm/100)*60; % mins
+  if USE_RPROC,
+    % RPROC settings
+    RPROC_MEMREQ             = 2000;
+    RPROC_OPT.express        = 0;
+    RPROC_OPT.immediately_bg = 0;
+    RPROC_OPT.immediately    = 0;
+    RPROC_OPT.arch           = 64; % take only 64 bit nodes
+    RPROC_OPT.identifier     = sprintf('hmsvm_tr_m%i_',i);
+    RPROC_TIME               = 12*(PAR.num_exm/100)*60; % mins
+
+    JOB_INFO{end+1} = rproc('train_hmsvm', ...
+                            PAR, RPROC_MEMREQ, RPROC_OPT, RPROC_TIME);
+  else
+    train_hmsvm(PAR);
+  end
   
-%  JOB_INFO{end+1} = rproc('main_training', ...
-%                          PAR, RPROC_MEMREQ, RPROC_OPT, RPROC_TIME);
-
-% FOR DEBUGGING
-  main_training(PAR);
-
   fprintf('\nSubmitted job %i\n\n', length(JOB_INFO));
 end
