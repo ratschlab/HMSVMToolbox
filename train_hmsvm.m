@@ -1,4 +1,4 @@
-function progress = main_training(PAR)
+function progress = train_hmsvm(PAR)
 
 % main_trainineg(PAR)
 %
@@ -7,7 +7,8 @@ function progress = main_training(PAR)
 %
 % Written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany, 2008
 
-extend_path
+addpath /fml/ag-raetsch/share/software/matlab_tools/shogun
+addpath /fml/ag-raetsch/share/software/matlab_tools/cplex9 %10
 
 EXTRA_CHECKS = 1;
 VERBOSE = 1
