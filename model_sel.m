@@ -65,11 +65,10 @@ for i=1:size(parameters,1),
     RPROC_OPT.identifier     = sprintf('hmsvm_tr_m%i_',i);
     RPROC_TIME               = 12*(PAR.num_exm/100)*60; % mins
     
-    JOB_INFO{end+1} = rproc('train_path', ...
+    JOB_INFO{end+1} = rproc('train_hmsvm', ...
                             PAR, RPROC_MEMREQ, RPROC_OPT, RPROC_TIME);
+    fprintf('\nSubmitted job %i\n\n', length(JOB_INFO));
   else
-    train_path(PAR);
+    train_hmsvm(PAR);
   end
-  
-  fprintf('\nSubmitted job %i\n\n', length(JOB_INFO));
 end

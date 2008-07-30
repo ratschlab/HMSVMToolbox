@@ -79,9 +79,8 @@ for i=1:size(parameters,1),
 
     JOB_INFO{end+1} = rproc('train_hmsvm', ...
                             PAR, RPROC_MEMREQ, RPROC_OPT, RPROC_TIME);
+    fprintf('\nSubmitted job %i\n\n', length(JOB_INFO));
   else
     train_hmsvm(PAR);
   end
-  
-  fprintf('\nSubmitted job %i\n\n', length(JOB_INFO));
 end
