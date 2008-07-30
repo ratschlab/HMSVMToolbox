@@ -110,7 +110,7 @@ for i=1:length(train_exm_ids),
   idx = find(exm_id==train_exm_ids(i));
   true_label_seq = label(idx);
   obs_seq = signal(:,idx);
-  true_state_seq = eval(sprintf('%s(true_label_seq, state_model, obs_seq);', ...
+  true_state_seq = eval(sprintf('%s(true_label_seq, state_model, obs_seq, PAR);', ...
                                 PAR.model_config.func_labels_to_states));
   if EXTRA_CHECKS,
     assert(check_path(true_state_seq, state_model));

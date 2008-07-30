@@ -1,11 +1,12 @@
-function [STATES NUM_LEVELS] = get_state_set()
-% [STATES NUM_LEVELS] = get_state_set()
-% returns the set of states of the graphical model
-%  as well as the number of discrete expression levels
+function STATES = get_state_set(PAR)
+% STATES = get_state_set(PAR)
+%
+% Returns the set of states of the graphical model.
 %
 % written by Georg Zeller, MPI Tuebingen, Germany
 
-NUM_LEVELS = 10;
+assert(isfield(PAR, 'NUM_LEVELS'));
+assert(PAR.NUM_LEVELS > 0);
 
 STATES = [];
 
@@ -15,7 +16,7 @@ cnt = cnt + 1;
 STATES.ige_ss      =  cnt; % splice site state between intergenic probes
 cnt = cnt + 1;
 
-for i=1:NUM_LEVELS,
+for i=1:PAR.NUM_LEVELS,
   % exon states
   STATES = setfield(STATES, sprintf('exo_%02i', i), cnt);
   cnt = cnt + 1;

@@ -17,8 +17,8 @@ function [pred_path true_path pred_path_mmv] = decode_Viterbi(obs_seq, transitio
 
 % compute score matrix for decoding
 num_states = length(state_model);
-STATES = eval(sprintf('%s();', ...
-                                   PAR.model_config.func_get_state_set));
+STATES = eval(sprintf('%s(PAR);', ...
+                      PAR.model_config.func_get_state_set));
 
 score_matrix = compute_score_matrix(obs_seq, score_plifs);
 p = -inf(1, num_states);
@@ -51,7 +51,7 @@ if exist('true_label_seq', 'var'),
       = path_weights(true_path.state_seq, obs_seq, score_plifs, state_model);
 
   % position-wise loss of the decoded state sequence
-  loss = eval(sprintf('%s(true_path.state_seq, state_model);', ...
+  loss = eval(sprintf('%s(true_path.state_seq, state_model, PAR);', ...
                       PAR.model_config.func_calc_loss_matrix));
   pred_loss = zeros(size(pred_state_seq));
   for i=1:size(pred_state_seq,2),

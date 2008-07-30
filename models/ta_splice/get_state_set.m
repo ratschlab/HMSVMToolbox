@@ -1,11 +1,9 @@
-function [STATES NUM_LEVELS] = get_state_set()
-% [STATES NUM_LEVELS] = get_state_set()
+function STATES = get_state_set(PAR)
+% STATES = get_state_set(PAR)
 % returns the set of states of the graphical model
 %  as well as the number of discrete expression levels
 %
 % written by Georg Zeller, MPI Tuebingen, Germany
-
-NUM_LEVELS = 1;
 
 STATES = [];
 STATES.ige         =  1; % intergenic

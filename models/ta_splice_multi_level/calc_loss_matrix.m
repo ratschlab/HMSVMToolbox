@@ -1,4 +1,4 @@
-function loss_matrix = calc_loss_matrix(true_state_seq, state_model)
+function loss_matrix = calc_loss_matrix(true_state_seq, state_model, PAR)
 % loss_matrix = calc_loss_matrix(true_state_seq, state_model)
 % compute loss matrix |S| x n where S is the set of states 
 % and n the length of the true state sequence
@@ -9,7 +9,7 @@ FP_segment_loss = 1;
 FN_segment_loss = 1;
 level_loss      = 0.1;
 
-STATES = get_state_set();
+STATES = get_state_set(PAR);
 
 exo_idx = strmatch('exo', fn);
 NUM_LEVELS = length(exo_idx);

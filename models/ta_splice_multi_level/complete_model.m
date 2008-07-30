@@ -8,7 +8,7 @@ function [state_model, A, a_trans] = complete_model(state_model, PAR, transition
 % written by Georg Zeller, MPI Tuebingen, Germany
 
 %%% define state names and corresponding state ids
-[STATES, NUM_LEVELS] = get_state_set();
+STATES = get_state_set(PAR);
 
 % initialize names and ids in state_model struct
 fn = fieldnames(STATES);

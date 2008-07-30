@@ -19,6 +19,13 @@ dr_base = '/fml/ag-raetsch/share/projects/tiling_arrays/ta_splice_simulations/';
 data_file = [dr_base 'ta_splice_data.mat'];
 dr_base = [dr_base 'hmsvm_result_' datestr(now,'yyyy-mm-dd_HHhMM')];
 
+% partition exon intensities into expression bins 
+% (i.e. assign discrete expression levels) 
+NUM_LEVELS = 10;
+load(data_file, 'signal', 'label');
+EXPRESSION_BINS = discretize_expression(signal, label, NUM_LEVELS);
+assert(size(EXPRESSION_BINS,1) == NUM_LEVELS);
+
 JOB_INFO = [];
 for i=1:size(parameters,1),
   PAR = [];
@@ -27,6 +34,10 @@ for i=1:size(parameters,1),
   PAR.model_dir = 'models/ta_splice_multi_level/';
   PAR.data_file = data_file;
   PAR.num_plif_nodes = 20;
+
+  % constant parameters specificic to mSTADsplice
+  PAR.NUM_LEVELS = NUM_LEVELS;
+  PAR.EXPRESSION_BINS = EXPRESSION_BINS;
   
   % parameters for which the best model is selected
   fprintf('Training model %i...\n', i);

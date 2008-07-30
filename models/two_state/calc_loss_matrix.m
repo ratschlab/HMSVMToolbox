@@ -1,5 +1,5 @@
-function loss_matrix = calc_loss_matrix(true_state_seq, state_model)
-% loss_matrix = calc_loss_matrix(true_state_seq, state_model)
+function loss_matrix = calc_loss_matrix(true_state_seq, state_model, PAR)
+% loss_matrix = calc_loss_matrix(true_state_seq, state_model, PAR)
 % compute loss matrix |S| x n where S is the set of states 
 % and n the length of the true state sequence
 
@@ -8,7 +8,7 @@ function loss_matrix = calc_loss_matrix(true_state_seq, state_model)
 FP_loss = 1;
 FN_loss = 1;
 
-STATES = get_state_set();
+STATES = get_state_set(PAR);
 
 loss = zeros(length(state_model));
 loss([STATES.start STATES.negative STATES.stop], STATES.positive) ...

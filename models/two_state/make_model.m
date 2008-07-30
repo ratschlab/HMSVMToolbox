@@ -5,7 +5,7 @@ function [state_model, A, a_trans] = make_model(PAR, transition_scores)
 % written by Georg Zeller, MPI Tuebingen, Germany
 
 %%% define state names and corresponding state ids
-STATES = get_state_set();
+STATES = get_state_set(PAR);
 
 % initialize names and ids in state_model struct
 fn = fieldnames(STATES);
