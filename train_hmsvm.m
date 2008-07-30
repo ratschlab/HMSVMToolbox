@@ -1,24 +1,47 @@
 function progress = train_hmsvm(PAR)
 
-% main_trainineg(PAR)
+% progress = train_hmsvm(PAR)
 %
-% Main script for HM-SVM training. For parameter specification (PAR) see
-% model_sel.m.
+% Main script for HM-SVM training.
 %
-% Written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany, 2008
+% PAR -- a struct to configure the HM-SVM (for specification see model_sel.m)
+% returns a struct recording the training progress
+%
+% written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany, 2008
 
+% path to the Shogun toolbox needed for Viterbi decoding
 addpath /fml/ag-raetsch/share/software/matlab_tools/shogun
+% path to cplex optimizer interface needed to solve training problems
 addpath /fml/ag-raetsch/share/software/matlab_tools/cplex9 %10
 
+% option to enable/disable some extra consistency checks
 EXTRA_CHECKS = 1;
-VERBOSE = 1
+
+% option to control the amount of output
+VERBOSE = 1;
 if VERBOSE>=1,
   fh1 = figure;
 end
 
+% stopping criterion: constraint generation is terminated if no more
+% margin violations are found or the relative change of the objective
+% function is smaller than this parameter
+MIN_REL_OBJ_CHANGE = 10^-3;
+% or if the maximum number of iterations is exceeded
+MAX_NUM_ITER = 100;
+
+% margin constraints are only added if the example is predicted with an
+% accuracy below this parameter
 MAX_ACCURACY = 0.99;
+
+% a DEcrease in the objective function more of than this parameter causes
+% an error
 EPSILON = 10^-6;
 
+% seed for random number generation
+rand('seed', 11081979);
+
+% mandatory fields of the parameter struct
 assert(isfield(PAR, 'C_small'));
 assert(isfield(PAR, 'C_smooth'));
 assert(isfield(PAR, 'C_coupling'));
@@ -44,8 +67,6 @@ disp(PAR.data_file);
 
 
 %%%%% load data and select training examples
-rand('seed', 11081979);
-
 data = load(PAR.data_file, 'pos_id', 'label', 'signal', 'exm_id', 'subset_id');
 PAR.train_idx = find(ismember(data.subset_id, PAR.train_subsets));
 train_exm_ids = unique(data.exm_id(PAR.train_idx));
@@ -61,12 +82,13 @@ clear data
 
 PAR.num_features = size(signal,1);
 
+% randomize order of potential training example before subselection
 r_idx = randperm(length(train_exm_ids));
 train_exm_ids = train_exm_ids(r_idx);
 % for validation use validation sets and unused training examples
 holdout_exm_ids = train_exm_ids(PAR.num_exm+1:end);
 holdout_exm_ids = [holdout_exm_ids vald_exm_ids];
-% use only PAR.num_exm for training
+% subselect PAR.num_exm sequences for training
 train_exm_ids = train_exm_ids(1:PAR.num_exm);
 assert(isempty(intersect(train_exm_ids, holdout_exm_ids)));
 fprintf('\nusing %i sequences for training.\n', ...
@@ -76,7 +98,6 @@ fprintf('using %i sequences for performance estimation.\n\n', ...
 
 
 %%%%% assemble model and score function structs,
-%%%%% inititialize optimization problem 
 LABELS = eval(sprintf('%s;', ...
                       PAR.model_config.func_get_label_set));
 state_model = eval(sprintf('%s(PAR);', ...
@@ -88,6 +109,20 @@ assert(~any(isnan([score_plifs.limits])));
 assert(~any(isnan([score_plifs.scores])));
 assert(~any(isnan(transition_scores)));
 
+%%% determine the true state sequence for each example from its label sequence
+for i=1:length(train_exm_ids),
+  idx = find(exm_id==train_exm_ids(i));
+  true_label_seq = label(idx);
+  obs_seq = signal(:,idx);
+  true_state_seq = eval(sprintf('%s(true_label_seq, state_model, obs_seq, PAR);', ...
+                                PAR.model_config.func_labels_to_states));
+  if EXTRA_CHECKS,
+    assert(check_path(true_state_seq, state_model));
+  end
+  state_label(idx) = true_state_seq;
+end
+
+%%%%% inititialize optimization problem 
 lpenv = cplex_license(1);
 switch PAR.optimization,
  case 'QP',
@@ -105,27 +140,20 @@ end
 assert(length(res) == PAR.num_opt_var);
 assert(all(size(res_map) == size(score_plifs)));
 
-for i=1:length(train_exm_ids),
-  idx = find(exm_id==train_exm_ids(i));
-  true_label_seq = label(idx);
-  obs_seq = signal(:,idx);
-  true_state_seq = eval(sprintf('%s(true_label_seq, state_model, obs_seq, PAR);', ...
-                                PAR.model_config.func_labels_to_states));
-  if EXTRA_CHECKS,
-    assert(check_path(true_state_seq, state_model));
-  end
-  state_label(idx) = true_state_seq;
-end
 
 %%%%% start iterative training
+% a struct keeping track of training progress
 progress = [];
+% accuracy on training examples
 trn_acc = zeros(1,length(train_exm_ids));
+% maximum training accuracy over previous iterations
 max_trn_acc = 0;
+% accuracy on holdout validation examples
 val_acc = zeros(1,length(holdout_exm_ids));
-
+% previous value of the objective function
 last_obj = 0;
-num_iter = 100;
-for iter=1:num_iter,
+
+for iter=1:MAX_NUM_ITER,
   new_constraints = zeros(1,PAR.num_exm);
   tic
   for i=1:length(train_exm_ids),
@@ -229,11 +257,10 @@ for iter=1:num_iter,
   assert(length(res) == PAR.num_param+PAR.num_aux+PAR.num_exm);
   slacks = res(end-PAR.num_exm+1:end);
   diff = obj - last_obj;
-  % output warning if objective is not monotonically increasing
+  % error if objective is not monotonically increasing
   if diff < -EPSILON,
     error(sprintf('decrease in objective function %f by %f', obj, diff));
   end
-  
   last_obj = obj;
   fprintf('  objective = %1.6f (diff = %1.6f), sum_slack = %1.6f\n\n', ...
           obj, diff, sum(slacks));
@@ -253,7 +280,7 @@ for iter=1:num_iter,
 
     val_acc(j) = mean(val_true_label_seq(1,:)==val_pred_label_seq(1,:));
     if VERBOSE>=2 && iter>=15 && j<=25,
-      % plot progress
+      % plot training progress
       view_label_seqs(gcf, val_obs_seq, val_true_label_seq, val_pred_label_seq);
       title(gca, ['Hold-out example ' num2str(holdout_exm_ids(j))]);
       fprintf('Hold-out example %i\n', holdout_exm_ids(j));
@@ -264,6 +291,7 @@ for iter=1:num_iter,
   fprintf(['\nIteration %i:\n' ...
            '  LSL validation accuracy:            %2.2f%%\n\n'], ...
           iter, 100*mean(val_acc));
+  
   if VERBOSE>=2 && iter>=20,
     fhs = eval(sprintf('%s(state_model, score_plifs, transition_scores);', ...
                        PAR.model_config.func_view_model));
@@ -292,19 +320,22 @@ for iter=1:num_iter,
     xlabel('iteration');
     ylabel('accuracy / relative objective');
     legend({'validation accuracy', 'training accuracy', ...
-            'objective value'}, 'Location', 'SouthEast');
+            'rel. objective value'}, 'Location', 'SouthEast');
     grid on
     axis([0 iter+1 0 1]);
     pause(1);
   end    
-  % save and terminate if no more constraints are generated
-  if all(new_constraints==0),% || diff < obj/10^6,
+  
+  % save and terminate training if no more constraints are generated or
+  % the change of the objective function was unsubstantial
+  if all(new_constraints==0) || diff < obj*MIN_REL_OBJ_CHANGE,
     fprintf('Saving result...\n\n\n');
     fname = sprintf('lsl_final');
     save([PAR.out_dir fname], 'PAR', 'score_plifs', 'transition_scores', 'trn_acc', ...
          'val_acc', 'A', 'b', 'Q', 'f', 'lb', 'ub', 'slacks', 'res', ...
          'train_exm_ids', 'holdout_exm_ids');
-   if VERBOSE>=2,
+   
+    if VERBOSE>=2,
       figure
       eval(sprintf('%s(state_model, score_plifs, transition_scores);', ...
                    PAR.model_config.func_view_model));
@@ -312,6 +343,7 @@ for iter=1:num_iter,
       plot(res)
       keyboard
     end
+    
     return
   end
 end
