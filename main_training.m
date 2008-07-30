@@ -7,8 +7,7 @@ function progress = main_training(PAR)
 %
 % Written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany, 2008
 
-addpath /fml/ag-raetsch/share/software/matlab_tools/shogun
-addpath /fml/ag-raetsch/share/software/matlab_tools/cplex9 %10
+extend_path
 
 EXTRA_CHECKS = 1;
 VERBOSE = 1
@@ -31,13 +30,11 @@ if ~exist(PAR.out_dir, 'dir'),
 end
 
 %%%%% init state model
-addpath(PAR.model_dir);
+if exist(PAR.model_name) ~= 7,
+  addpath(PAR.model_dir);
+end
 PAR.model_config = model_config();
-
-name = separate(PAR.model_dir, '/');
-name(strmatch('', name, 'exact')) = [];
-name = name{end};
-assert(isequal(PAR.model_config.name, name));
+assert(isequal(PAR.model_name, PAR.model_config.name));
 disp(PAR);
 disp(PAR.data_file);
 

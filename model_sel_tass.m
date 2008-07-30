@@ -31,7 +31,8 @@ for i=1:size(parameters,1),
   PAR = [];
   % constant parameters
   PAR.out_dir = [dr_base '_model' num2str(i) '/'];
-  PAR.model_dir = 'models/ta_splice_multi_level/';
+  PAR.model_name = 'ta_splice_multi_level';
+  PAR.model_dir = ['models/' PAR.model_name '/'];
   PAR.data_file = data_file;
   PAR.num_plif_nodes = 20;
 
