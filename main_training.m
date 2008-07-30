@@ -91,12 +91,10 @@ lpenv = cplex_license(1);
 switch PAR.optimization,
  case 'QP',
   [A b Q f lb ub slacks res res_map PAR] ...
-      = eval(sprintf('%s(transition_scores, score_plifs, state_model, PAR);', ...
-                     PAR.model_config.func_init_QP));
+      = init_QP(transition_scores, score_plifs, state_model, PAR);
  case 'LP',
   [A b f lb ub slacks res res_map PAR] ...
-      = eval(sprintf('%s(transition_scores, score_plifs, state_model, PAR);', ...
-                   PAR.model_config.func_init_LP));
+      = init_LP(transition_scores, score_plifs, state_model, PAR);
   how = lp_set_param(lpenv, 'CPX_PARAM_PREDUAL', 1, 1);
   assert(isequal(how, 'OK'));
   Q = []; % just to keep code as general as possible
@@ -249,7 +247,6 @@ for iter=1:num_iter,
     val_idx = find(exm_id==holdout_exm_ids(j));
     val_obs_seq = signal(:,val_idx);
     val_pred_path = decode_Viterbi(val_obs_seq, transition_scores, score_plifs, PAR);
-    keyboard
     val_true_label_seq = label(val_idx);
     val_pred_label_seq = val_pred_path.label_seq;
 
