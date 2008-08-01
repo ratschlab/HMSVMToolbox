@@ -38,6 +38,12 @@ MAX_ACCURACY = 0.99;
 % satisfaction and monotonictiy of the objective function
 EPSILON = 10^-6;
 
+% option to only solve partial intermediate training problems which do
+% not contain contstraints satisfied with a margin at least as large as
+% the parameter value. Such constraints are however kept aside and
+% checked in each iteration. Set to inf to always solve the full problem.
+CONSTRAINT_MARGIN = 10;
+
 % seed for random number generation
 rand('seed', 11081979);
 
@@ -218,15 +224,19 @@ for iter=1:MAX_NUM_ITER,
 
   %%%%% solve intermediate optimization problem
   tic
+  c_diff = b - A*res;
+  part_idx = find(c_diff <= CONSTRAINT_MARGIN);
+  fprintf('Solving problem with %2.1f%% of constraints\n\n', 100*length(part_idx)/length(b));
+
   switch PAR.optimization,
    case 'QP',
-    [res, lambda, how] = qp_solve(lpenv, Q, f, sparse(A), b, lb, ub, 0, 1, 'bar');
+    [res, lambda, how] = qp_solve(lpenv, Q, f, sparse(A(part_idx,:)), b(part_idx), lb, ub, 0, 1, 'bar');
     if ~isequal(how, 'OK'),
       error(sprintf('Optimizer problem: %s', how));
     end
     obj = 0.5*res'*Q*res + f'*res;
    case 'LP',
-    [res, lambda, how] = lp_solve(lpenv, f, sparse(A), b, lb, ub, 0, 1, 'bar');
+    [res, lambda, how] = lp_solve(lpenv, f, sparse(A(part_idx,:)), b(part_idx), lb, ub, 0, 1, 'bar');
     if ~isequal(how, 'OK'),
       error(sprintf('Optimizer problem: %s', how));
     end
@@ -290,7 +300,7 @@ for iter=1:MAX_NUM_ITER,
     end
   end
   fprintf(['  LSL validation accuracy:            %2.2f%%\n\n'], ...
-          iter, 100*mean(val_acc));
+          100*mean(val_acc));
   
   if VERBOSE>=2 && iter>=20,
     fhs = eval(sprintf('%s(state_model, score_plifs, transition_scores);', ...
