@@ -3,12 +3,35 @@ function [pred_path true_path pred_path_mmv] = decode_Viterbi(obs_seq, transitio
 
 % [pred_path true_path pred_path_mmv] 
 %    = decode_Viterbi(obs_seq, transition_scores, score_plifs,
-%    PAR[, true_label_seq true_state_seq])
+%    PAR, [true_label_seq], [true_state_seq])
 %
-% calls shogun viterbi algorithm to decode i) the best path under current
-% parameters (pred_path) and the maximal margin violator (pred_path_mmv).
+% Calls the Viterbi algorithm implemented in the Shogun toolbox
+% (http://www.shogun-toolbox.org/) to decode the best state sequence
+% under the current parameters (pred_path) and if a true label and state
+% sequence are given also the maximal margin violator (pred_path_mmv).
 %
-% Written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany, 2008
+% obs_seq -- sequence of observations, i.e. the feature matrix
+% transition_scores -- scores associated with allowed transitions between
+%   states
+% score_plifs -- a struct representation of feature scoring functions
+%   (see also score_plif_struct.h / .cpp)
+% PAR -- a struct to configure the HM-SVM (for specification see
+%   model_sel.m and train_hmsvm.m)
+% true_label_seq -- optional parameter indicating the true label sequence
+%   if given, also true_state_seq has to be specified. In this case used
+%   transitions and plif weights are computed for the true path,
+%   pred_path is augmented with a loss and a struct pred_path_mmv is
+%   returned corresponding to the maximal margin violator under the given
+%   loss.
+% true_state_seq -- true sequence of states, has to be specified iff
+%   true_label_seq is given 
+% returns a struct representing the decoded state sequence (pred_path),
+%   and if true_label_seq is given, also a struct representing the true
+%   state sequence and a struct for the max-margin violator
+%
+% see also compute_score_matrix.cpp
+%
+% written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany, 2008
 
 [state_model, A, a_trans] = eval(sprintf('%s(PAR, transition_scores);', ...
                                          PAR.model_config.func_make_model));

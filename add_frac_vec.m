@@ -2,13 +2,20 @@ function vec = add_frac_vec(vec, value, limits)
 
 % vec = add_frac_vec(vec, value, limits)
 %
-% Adds weights w1 and w2 (both in [0, 1]) to the i-th and (i+1)-th
-% entries of vec such that w1 + w2 = 1, limits(i) = max {limits <= value}
-% and limits(i+1) = min {limits > value}. w1 and w1 are then calibrated
-% by linear interpolation if the distance between the i-th limit and
-% value or value and th (i+1)-th limit, respectively.
+% Adds weights w1 and w2 (both in [0, 1] and w1 + w2 = 1) to the i-th and
+% (i+1)-th entries of vec such that w1 + w2 = 1, limits(i) = max{limits
+% <= value} and limits(i+1) = min{limits > value}. w1 and w1 are then
+% calibrated by linear interpolation of the distance between the i-th
+% limit and value or value and the (i+1)-th limit, respectively.
 %
-% Written by Gunnar Raetsch & Georg Zeller, MPI Tuebingen, Germany, 2008
+% vec -- a vector of length n to which weights with a total sum of 1 will
+%   be added 
+% value -- the two limits entries adjacent to value determine the
+%   components of vec to which weights will be added
+% limits -- a vector of length n specifying intervals corresponding to
+%   adjacent components of vec
+%
+% written by Gunnar Raetsch & Georg Zeller, MPI Tuebingen, Germany, 2008
 
 %assert(~any(isnan(limits)));
 %assert(~any(isinf(limits)));

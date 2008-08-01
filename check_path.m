@@ -2,10 +2,14 @@ function check = check_path(path, state_model)
 
 % check = check_path(path, state_model)
 %
-% Checks whether the given path can possibly be decoded with the given
-% state model.
+% Checks whether the given path can possibly be decoded given the allowed
+% transitions in the state model.
 %
-% Written by Georg Zeller, MPI Tuebingen, Germany, 2008
+% path -- a sequence of states
+% state_model -- a graphical model which also specifies allowed
+%   transitions
+%
+% written by Georg Zeller, MPI Tuebingen, Germany, 2008
 
 check = logical(1);
 c = state_model(path(1)).is_start == 1;
@@ -25,6 +29,6 @@ for i=1:length(path)-1,
     path(i)
     path(i+1)
     state_model(path(i)).successors
-    keyboard;
+    keyboard
   end
 end

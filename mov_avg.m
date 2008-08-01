@@ -4,9 +4,11 @@ function ma = mov_avg(data, w)
 %
 % Computes a moving average in windows of length w.
 %
-% returns an array of the length of data - w
+% data -- a vector of data to be smoothed using moving averages
+% w -- the length under the sliding window used for averaging
+% returns a vector of of the length of data - w
 %
-% Written by Georg Zeller, MPI Tuebingen, Germany, 2007-2008
+% written by Georg Zeller, MPI Tuebingen, Germany, 2007-2008
 
 if length(data) < w
   ma = [];

@@ -1,8 +1,25 @@
 function [A b f lb ub slacks res res_map PAR] = init_LP(transition_scores, score_plifs, state_model, PAR)
-% [A b f lb ub slacks res res_map PAR] = init_LP(transition_scores, score_plifs, state_model, PAR)
-% initialize LP
 
-% written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany
+% [A b f lb ub slacks res res_map PAR] = init_LP(transition_scores, score_plifs, state_model, PAR)
+%
+% Initializes the linear programming problem corresponding to the
+% (initial) training problem of the HM-SVM.
+%
+% transition_scores -- scores associated with allowed transitions between
+%   states
+% score_plifs -- a struct representation of feature scoring functions
+%   (see also score_plif_struct.h / .cpp)
+% state_model -- a graphical model which specifies states and allowed
+%   transitions between them
+% PAR -- a struct to configure the HM-SVM (for specification see
+%   model_sel.m and train_hmsvm.m)
+% returns a problem of the form minimize f*res 
+%     subject to A*res<=b and lb<=res<=ub;
+%   furthermore a vector of slack variables (slacks), a mapping between
+%   components of res and the score_plif struct (res_map) as well as an
+%   updated configuration struct (PAR) 
+%
+% written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany, 2008
 
 %%% optimization paramaters: 
 %%%   i) transition scores

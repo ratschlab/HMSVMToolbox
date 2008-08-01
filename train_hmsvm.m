@@ -34,8 +34,8 @@ MAX_NUM_ITER = 100;
 % accuracy below this parameter
 MAX_ACCURACY = 0.99;
 
-% a DEcrease in the objective function more of than this parameter causes
-% an error
+% numerical tolerance to check consistent score calculation, constraint
+% satisfaction and monotonictiy of the objective function
 EPSILON = 10^-6;
 
 % seed for random number generation
@@ -57,7 +57,7 @@ if ~exist(PAR.out_dir, 'dir'),
 end
 
 %%%%% init state model
-if exist(PAR.model_name) ~= 7,
+if exist(PAR.model_name)~=7,
   addpath(PAR.model_dir);
 end
 PAR.model_config = model_config();
@@ -146,12 +146,12 @@ assert(all(size(res_map) == size(score_plifs)));
 progress = [];
 % accuracy on training examples
 trn_acc = zeros(1,length(train_exm_ids));
-% maximum training accuracy over previous iterations
-max_trn_acc = 0;
 % accuracy on holdout validation examples
 val_acc = zeros(1,length(holdout_exm_ids));
 % previous value of the objective function
 last_obj = 0;
+% record elapsed time
+t_start = clock();
 
 for iter=1:MAX_NUM_ITER,
   new_constraints = zeros(1,PAR.num_exm);
@@ -211,30 +211,11 @@ for iter=1:MAX_NUM_ITER,
       if new_constraints(i),
         fprintf('  generated new constraint\n', train_exm_ids(i));      
       end
-      if iter>=15 && i<=25,
-        view_label_seqs(gcf, obs_seq, true_label_seq, pred_path.label_seq, pred_path_mmv.label_seq);
-        title(gca, ['Training example ' num2str(train_exm_ids(i))]);
-        pause
-      end
     end
   end
-  fprintf(['\nIteration %i:\n' ...
-           '  LSL training accuracy:              %2.2f%%\n\n'], ...
-          iter, 100*mean(trn_acc));
   fprintf('Generated %i new constraints\n\n', sum(new_constraints));
   fprintf('Constraint generation took %3.2f sec\n\n', toc);
 
-  % save intermediate result if accuracy is higher than before
-  % save at every fifth iteration anyway
-  if mean(trn_acc)>max_trn_acc | mod(iter,1)==0,
-    max_trn_acc = max(mean(trn_acc), max_trn_acc);
-    fprintf('Saving result...\n\n\n');
-    fname = sprintf('lsl_iter%i', iter);
-    save([PAR.out_dir fname], 'PAR', 'score_plifs', 'transition_scores', 'trn_acc', ...
-         'val_acc', 'A', 'b', 'Q', 'f', 'lb', 'ub', 'slacks', 'res', ...
-         'train_exm_ids', 'holdout_exm_ids');
-  end
-  
   %%%%% solve intermediate optimization problem
   tic
   switch PAR.optimization,
@@ -270,6 +251,27 @@ for iter=1:MAX_NUM_ITER,
   [transition_scores, score_plifs] = res_to_scores(res, state_model, res_map, ...
                                                    score_plifs, PAR);
   
+  %%%%% check prediction accuracy on training examples
+  for j=1:length(train_exm_ids),
+    trn_idx = find(exm_id==train_exm_ids(j));
+    trn_obs_seq = signal(:,trn_idx);
+    trn_pred_path = decode_Viterbi(trn_obs_seq, transition_scores, score_plifs, PAR);
+    trn_true_label_seq = label(trn_idx);
+    trn_pred_label_seq = trn_pred_path.label_seq;
+    trn_acc(j) = mean(trn_true_label_seq(1,:)==trn_pred_label_seq(1,:));
+
+    if VERBOSE>=2 && iter>=15 && j<=25,
+      view_label_seqs(gcf, trn_obs_seq, trn_true_label_seq, trn_pred_label_seq);
+      title(gca, ['Training example ' num2str(train_exm_ids(j))]);
+      fprintf('Training example %i\n', train_exm_ids(j));
+      fprintf('  Example accuracy: %3.2f%%\n', 100*trn_acc(j));
+      pause
+    end
+  end
+  fprintf(['\nIteration %i:\n' ...
+           '  LSL training accuracy:              %2.2f%%\n'], ...
+          iter, 100*mean(trn_acc));
+  
   %%%%% check prediction accuracy on holdout examples
   for j=1:length(holdout_exm_ids),
     val_idx = find(exm_id==holdout_exm_ids(j));
@@ -277,10 +279,9 @@ for iter=1:MAX_NUM_ITER,
     val_pred_path = decode_Viterbi(val_obs_seq, transition_scores, score_plifs, PAR);
     val_true_label_seq = label(val_idx);
     val_pred_label_seq = val_pred_path.label_seq;
-
     val_acc(j) = mean(val_true_label_seq(1,:)==val_pred_label_seq(1,:));
+    
     if VERBOSE>=2 && iter>=15 && j<=25,
-      % plot training progress
       view_label_seqs(gcf, val_obs_seq, val_true_label_seq, val_pred_label_seq);
       title(gca, ['Hold-out example ' num2str(holdout_exm_ids(j))]);
       fprintf('Hold-out example %i\n', holdout_exm_ids(j));
@@ -288,8 +289,7 @@ for iter=1:MAX_NUM_ITER,
       pause
     end
   end
-  fprintf(['\nIteration %i:\n' ...
-           '  LSL validation accuracy:            %2.2f%%\n\n'], ...
+  fprintf(['  LSL validation accuracy:            %2.2f%%\n\n'], ...
           iter, 100*mean(val_acc));
   
   if VERBOSE>=2 && iter>=20,
@@ -302,27 +302,19 @@ for iter=1:MAX_NUM_ITER,
   progress(iter).val_acc = val_acc';
   progress(iter).gen_constraints = new_constraints';
   progress(iter).objective = obj;
+  progress(iter).el_time = etime(clock(), t_start);
+  
+  % save at every fifth iteration anyway
+  if  mod(iter,5)==0,
+    fprintf('Saving result...\n\n\n');
+    fname = sprintf('lsl_iter%i', iter);
+    save([PAR.out_dir fname], 'PAR', 'score_plifs', 'transition_scores', ...
+         'trn_acc', 'val_acc', 'A', 'b', 'Q', 'f', 'lb', 'ub', 'slacks', 'res', ...
+         'train_exm_ids', 'holdout_exm_ids', 'progress');
+  end
   
   if VERBOSE>=1,
-    figure(fh1);
-    clf
-    hold on
-    v_acc = mean([progress.val_acc]);
-    tr_acc = mean([progress.trn_acc]);
-    r_obj = [progress.objective] ./ max([progress.objective]);
-    plot(v_acc, '.-r');
-    plot(tr_acc, '.-b');
-    plot(r_obj, '.--k');
-    plot(iter, v_acc(end), 'dr');
-    plot(iter, tr_acc(end), 'db');
-    plot(iter, r_obj(end), 'dk');
-
-    xlabel('iteration');
-    ylabel('accuracy / relative objective');
-    legend({'validation accuracy', 'training accuracy', ...
-            'rel. objective value'}, 'Location', 'SouthEast');
-    grid on
-    axis([0 iter+1 0 1]);
+    plot_progress(progress, fh1);
     pause(1);
   end    
   
@@ -331,9 +323,9 @@ for iter=1:MAX_NUM_ITER,
   if all(new_constraints==0) || diff < obj*MIN_REL_OBJ_CHANGE,
     fprintf('Saving result...\n\n\n');
     fname = sprintf('lsl_final');
-    save([PAR.out_dir fname], 'PAR', 'score_plifs', 'transition_scores', 'trn_acc', ...
-         'val_acc', 'A', 'b', 'Q', 'f', 'lb', 'ub', 'slacks', 'res', ...
-         'train_exm_ids', 'holdout_exm_ids');
+    save([PAR.out_dir fname], 'PAR', 'score_plifs', 'transition_scores', ...
+         'trn_acc', 'val_acc', 'A', 'b', 'Q', 'f', 'lb', 'ub', 'slacks', 'res', ...
+         'train_exm_ids', 'holdout_exm_ids', 'progress');
    
     if VERBOSE>=2,
       figure
@@ -343,7 +335,8 @@ for iter=1:MAX_NUM_ITER,
       plot(res)
       keyboard
     end
-    
+
+    % terminate
     return
   end
 end
