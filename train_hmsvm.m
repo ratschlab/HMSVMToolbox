@@ -39,10 +39,14 @@ MAX_ACCURACY = 0.99;
 EPSILON = 10^-6;
 
 % option to only solve partial intermediate training problems which do
-% not contain contstraints satisfied with a margin at least as large as
+% not contain constraints satisfied with a margin at least as large as
 % the parameter value. Such constraints are however kept aside and
 % checked in each iteration. Set to inf to always solve the full problem.
-CONSTRAINT_MARGIN = 10;
+% Throwing away constraints is a HEURISTIC which speeds up training at
+% the cost of losing the guarantee to converge to the correct solution!
+if ~isfield(PAR, 'CONSTRAINT_MARGIN'),
+  PAR.CONSTRAINT_MARGIN = inf;
+end
 
 % seed for random number generation
 rand('seed', 11081979);
@@ -225,7 +229,7 @@ for iter=1:MAX_NUM_ITER,
   %%%%% solve intermediate optimization problem
   tic
   c_diff = b - A*res;
-  part_idx = find(c_diff <= CONSTRAINT_MARGIN);
+  part_idx = find(c_diff <= PAR.CONSTRAINT_MARGIN);
   fprintf('Solving problem with %2.1f%% of constraints\n\n', 100*length(part_idx)/length(b));
 
   switch PAR.optimization,
@@ -253,8 +257,10 @@ for iter=1:MAX_NUM_ITER,
     error(sprintf('decrease in objective function %f by %f', obj, diff));
   end
   last_obj = obj;
-  fprintf('  objective = %1.6f (diff = %1.6f), sum_slack = %1.6f\n\n', ...
+  fprintf('  objective = %1.6f (diff = %1.6f), sum_slack = %1.6f\n', ...
           obj, diff, sum(slacks));
+  fprintf('  %.1f%% of constraints satisfied\n\n', ...
+          100*mean(A*res <= b+EPSILON));
 
   %%%%% extract parameters from optimization problem & update model 
   %%%%% (i.e. transition scores & score PLiFs)
@@ -315,7 +321,7 @@ for iter=1:MAX_NUM_ITER,
   progress(iter).el_time = etime(clock(), t_start);
   
   % save at every fifth iteration anyway
-  if  mod(iter,5)==0,
+  if mod(iter,5)==0,
     fprintf('Saving result...\n\n\n');
     fname = sprintf('lsl_iter%i', iter);
     save([PAR.out_dir fname], 'PAR', 'score_plifs', 'transition_scores', ...
@@ -350,3 +356,5 @@ for iter=1:MAX_NUM_ITER,
     return
   end
 end
+
+% eof

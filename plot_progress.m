@@ -28,10 +28,12 @@ plot(length(progress), v_acc(end), 'dr');
 
 xlabel('iteration');
 ylabel('accuracy / relative objective');
-legend({'validation accuracy', 'training accuracy', ...
-        'rel. objective value'}, 'Location', 'SouthEast');
+legend({'rel. objective value', 'training accuracy', ...
+        'validation accuracy'}, 'Location', 'NorthWest');
 grid on
 axis([0 length(progress)+1 0 1]);
 for i=5:5:length(progress),
-  text(i, 0.83, sprintf('%.0f min', progress(i).el_time/60));
+  text(i, 0.05, sprintf('%.0f min', progress(i).el_time/60));
 end
+
+% eof
