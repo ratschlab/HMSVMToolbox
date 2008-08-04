@@ -1,52 +1,61 @@
-function lpenv = cplex_license(waitflag, num_cpus)
-%  lpenv = cplex_license(waitflag, num_cpus)
+function opt_env = cplex_license(waitflag, license_no)
+
+% opt_env = cplex_license([waitflag], [license_no])
+%
+% Gets a CPLEX license and returns an environmental pointer to this
+% solver instance.
+%
+% waitflag -- optional parameter (default: 0), if one getting a license
+%   will be retried every 60 sec at inifinitum or until successful
+% license_no -- optional parameter to specify a certain license manager
+%   if there are several
+% returns an environmental pointer to the CPLEX solver instance.
+%
+% written by Gunnar Raetsch & Georg Zeller, MPI Tuebingen, Germany, 2008
 
 warning off MATLAB:typeaheadBufferOverflow
 
-global lpenv;
+global opt_env;
 
 if nargin<1, 
   waitflag = 0; 
 end
 if nargin<2, 
-  num_cpus = -1;
+  license_no = -1;
 end
 
-envstr1 = 'ILOG_LICENSE_FILE=/fml/ag-raetsch/share/software/ilog/licenses/access-820980.ilm';
-envstr2 = 'ILOG_LICENSE_FILE=/fml/ag-raetsch/share/software/ilog/licenses/access-703040.ilm';
-envstr3 = 'ILOG_LICENSE_FILE=/fml/ag-raetsch/share/software/ilog/licenses/access-587380.ilm';
+%%% Adjust this to your local CPLEX license manager
+opt_license_path = '/fml/ag-raetsch/share/software/ilog/licenses/';
+opt_license_env = {...
+    ['ILOG_LICENSE_FILE=' opt_license_path 'access-820980.ilm'], ...
+    ['ILOG_LICENSE_FILE=' opt_license_path 'access-703040.ilm'], ...
+    ['ILOG_LICENSE_FILE=' opt_license_path 'access-587380.ilm'], ...
+                  };
 
-if num_cpus == -1,
+
+if license_no == -1,
   envstr = getenv('ILOG_LICENSE_FILE');
-elseif num_cpus == 1,
-  envstr = envstr1;
-elseif num_cpus == 2,
-  envstr = envstr2;
-elseif num_cpus > 2,
-  envstr = envstr3;
+else
+  envstr = opt_license_env{license_no};
 end
 fprintf('Getting cplex license from %s\n', envstr);
+opt_env = cplex_init_quit(0, envstr);
+fprintf('Failed to get cplex license from %s; trying other license managers...\n', envstr);
 
-lpenv = 0;
-while (lpenv==0)
-  lpenv = cplex_init_quit(0, envstr);
-  if lpenv==0,
-    fprintf('Failed to get cplex license from %s\n', envstr);
-    fprintf('Trying to get cplex license from %s\n', envstr1);
-    lpenv = cplex_init_quit(0, envstr1);
+n = 1;
+while opt_env==0,
+  for n=1:length(opt_license_env),
+    envstr = opt_license_env{n};
+    fprintf('Trying to get cplex license from %s\n', envstr);
+    opt_env = cplex_init_quit(0, envstr);
+    if opt_env==0,
+      fprintf('Failed to get cplex license from %s\n', envstr);
+    else
+      fprintf('Succeeded to get cplex license from %s\n', envstr);
+      break
+    end
   end
-  if lpenv==0,
-    fprintf('Failed to get cplex license from %s\n', envstr1);
-    fprintf('Trying to get cplex license from %s\n', envstr2);
-    lpenv = cplex_init_quit(0, envstr2);
-  end
-  if lpenv==0,
-    fprintf('Failed to get cplex license from %s\n', envstr2);
-    fprintf('Trying to get cplex license from %s\n', envstr3);
-    lpenv = cplex_init_quit(0, envstr3);
-  end
-  if lpenv==0,
-    fprintf('Failed to get cplex license from %s\n', envstr3);
+  if opt_env==0,
     if ~waitflag,
       break
     else
@@ -55,4 +64,4 @@ while (lpenv==0)
     end
   end
 end
-
+fprintf('\n');

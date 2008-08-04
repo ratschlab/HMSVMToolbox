@@ -8,5 +8,5 @@ setenv CPLEX_INC /fml/ag-raetsch/share/software/ilog/cplex90/include/ilcplex
 /fml/ag-raetsch/share/software/matlab/bin/mex -I$CPLEX_INC -L$CPLEX_LIB -lcplex -lpthread -largeArrayDims qp_gen.c
 /fml/ag-raetsch/share/software/matlab/bin/mex -I$CPLEX_INC -L$CPLEX_LIB -lcplex -lpthread -largeArrayDims lp_solve.c
 /fml/ag-raetsch/share/software/matlab/bin/mex -I$CPLEX_INC -L$CPLEX_LIB -lcplex -lpthread -largeArrayDims qp_solve.c
-/fml/ag-raetsch/share/software/matlab/bin/mex -I$CPLEX_INC -L$CPLEX_LIB -lcplex -lpthread -largeArrayDims set_param.c
+/fml/ag-raetsch/share/software/matlab/bin/mex -I$CPLEX_INC -L$CPLEX_LIB -lcplex -lpthread -largeArrayDims cplex_set_param.c
 

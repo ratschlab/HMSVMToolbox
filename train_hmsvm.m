@@ -22,7 +22,7 @@ end
 
 % option to control the amount of output
 if ~isfield(PAR, 'verbose'),
-  PAR.verbose = 3;
+  PAR.verbose = 1;
 end
 
 if PAR.verbose>=1,
@@ -155,7 +155,7 @@ switch PAR.optimization,
  case 'LP',
   [A b f lb ub slacks res res_map PAR] ...
       = init_LP(transition_scores, score_plifs, state_model, PAR);
-  how = lp_set_param(opt_env, 'CPX_PARAM_PREDUAL', 1, 1);
+  how = cplex_set_param(opt_env, 'CPX_PARAM_PREDUAL', 1, 1);
   assert(isequal(how, 'OK'));
   Q = []; % just to keep code as general as possible
  otherwise,

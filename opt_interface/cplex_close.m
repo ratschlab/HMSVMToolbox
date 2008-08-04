@@ -1,8 +1,13 @@
-function cplex_close(lpenv_)
-%  cplex_close(lpenv)
+function cplex_close(opt_env_)
 
-global lpenv 
+% cplex_close(opt_env)
+%
+% Quits CPLEX, freeing the license specified by opt_env_.
+%
+% written by Gunnar Raetsch, MPI Tuebingen, Germany, 2008
 
-[lpenv,status]=cplex_init_quit(1,'',lpenv_) ;
+global opt_env 
+
+[opt_env, status] = cplex_init_quit(1, '', opt_env_);
 
 
