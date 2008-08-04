@@ -15,28 +15,41 @@ addpath /fml/ag-raetsch/share/software/matlab_tools/shogun
 addpath /fml/ag-raetsch/share/software/matlab_tools/cplex9 %10
 
 % option to enable/disable some extra consistency checks
-EXTRA_CHECKS = 1;
+if ~isfield(PAR, 'extra_checks'),
+  PAR.extra_checks = 1;
+end
 
 % option to control the amount of output
-VERBOSE = 1;
-if VERBOSE>=1,
+if ~isfield(PAR, 'verbose'),
+  PAR.verbose = 1;
+end
+
+if PAR.verbose>=1,
   fh1 = figure;
 end
 
 % stopping criterion: constraint generation is terminated if no more
 % margin violations are found or the relative change of the objective
-% function is smaller than this parameter
-MIN_REL_OBJ_CHANGE = 10^-3;
-% or if the maximum number of iterations is exceeded
-MAX_NUM_ITER = 100;
+% function is smaller than this parameter...
+if ~isfield(PAR, 'min_rel_obj_change'),
+  PAR.min_rel_obj_change = 10^-3;
+end
+% ... or if the maximum number of iterations is exceeded
+if ~isfield(PAR, 'max_num_iter'),
+  PAR.max_num_iter = 100;
+end
 
 % margin constraints are only added if the example is predicted with an
 % accuracy below this parameter
-MAX_ACCURACY = 0.99;
+if ~isfield(PAR, 'max_accuracy'),
+  PAR.max_accuracy = 0.99;
+end
 
 % numerical tolerance to check consistent score calculation, constraint
 % satisfaction and monotonictiy of the objective function
-EPSILON = 10^-6;
+if ~isfield(PAR, 'epsilon'),
+  PAR.epsilon = 10^-6;
+end
 
 % option to only solve partial intermediate training problems which do
 % not contain constraints satisfied with a margin at least as large as
@@ -126,7 +139,7 @@ for i=1:length(train_exm_ids),
   obs_seq = signal(:,idx);
   true_state_seq = eval(sprintf('%s(true_label_seq, state_model, obs_seq, PAR);', ...
                                 PAR.model_config.func_labels_to_states));
-  if EXTRA_CHECKS,
+  if PAR.extra_checks,
     assert(check_path(true_state_seq, state_model));
   end
   state_label(idx) = true_state_seq;
@@ -163,7 +176,7 @@ last_obj = 0;
 % record elapsed time
 t_start = clock();
 
-for iter=1:MAX_NUM_ITER,
+for iter=1:PAR.max_num_iter,
   new_constraints = zeros(1,PAR.num_exm);
   tic
   for i=1:length(train_exm_ids),
@@ -176,16 +189,16 @@ for iter=1:MAX_NUM_ITER,
     [pred_path true_path pred_path_mmv] ...
         = decode_Viterbi(obs_seq, transition_scores, score_plifs, ...
                          PAR, true_label_seq, true_state_seq);
-    if EXTRA_CHECKS,
+    if PAR.extra_checks,
       w = weights_to_vector(pred_path.transition_weights, ...
                             pred_path.plif_weights, state_model, ...
                             res_map, PAR);
-      assert(abs(w*res(1:PAR.num_param) - pred_path.score) < EPSILON);
+      assert(abs(w*res(1:PAR.num_param) - pred_path.score) < PAR.epsilon);
   
       w = weights_to_vector(pred_path_mmv.transition_weights, ...
                             pred_path_mmv.plif_weights, state_model, ...
                             res_map, PAR);
-      assert(abs(w*res(1:PAR.num_param) - pred_path_mmv.score) < EPSILON);
+      assert(abs(w*res(1:PAR.num_param) - pred_path_mmv.score) < PAR.epsilon);
     end
     trn_acc(i) = mean(true_path.label_seq==pred_path.label_seq);
 
@@ -199,13 +212,13 @@ for iter=1:MAX_NUM_ITER,
     assert(length(weight_delta) == PAR.num_param);
 
     loss = sum(pred_path_mmv.loss);
-    if norm(weight_delta)==0, assert(loss < EPSILON); end
+    if norm(weight_delta)==0, assert(loss < PAR.epsilon); end
 
     score_delta = weight_delta*res(1:PAR.num_param);
     
     %%%%% add constraints for examples which have not been decoded correctly
     %%%%% and for which a margin violator has been found
-    if score_delta + slacks(i) < loss - EPSILON && trn_acc(i)<MAX_ACCURACY,
+    if score_delta + slacks(i) < loss - PAR.epsilon && trn_acc(i)<PAR.max_accuracy,
       v = zeros(1,PAR.num_exm);
       v(i) = 1;
       A = [A; -weight_delta zeros(1, PAR.num_aux) -v];
@@ -213,7 +226,7 @@ for iter=1:MAX_NUM_ITER,
       new_constraints(i) = 1;      
     end
     
-    if VERBOSE>=2,
+    if PAR.verbose>=3,
       fprintf('Training example %i\n', train_exm_ids(i));      
       fprintf('  example accuracy: %3.2f%%\n', 100*trn_acc(i));
       fprintf('  loss = %6.2f  diff = %8.2f  slack = %6.2f\n', ...
@@ -253,14 +266,14 @@ for iter=1:MAX_NUM_ITER,
   slacks = res(end-PAR.num_exm+1:end);
   diff = obj - last_obj;
   % error if objective is not monotonically increasing
-  if diff < -EPSILON,
+  if diff < -PAR.epsilon,
     error(sprintf('decrease in objective function %f by %f', obj, diff));
   end
   last_obj = obj;
   fprintf('  objective = %1.6f (diff = %1.6f), sum_slack = %1.6f\n', ...
           obj, diff, sum(slacks));
   fprintf('  %.1f%% of constraints satisfied\n\n', ...
-          100*mean(A*res <= b+EPSILON));
+          100*mean(A*res <= b+PAR.epsilon));
 
   %%%%% extract parameters from optimization problem & update model 
   %%%%% (i.e. transition scores & score PLiFs)
@@ -276,7 +289,7 @@ for iter=1:MAX_NUM_ITER,
     trn_pred_label_seq = trn_pred_path.label_seq;
     trn_acc(j) = mean(trn_true_label_seq(1,:)==trn_pred_label_seq(1,:));
 
-    if VERBOSE>=2 && iter>=15 && j<=25,
+    if PAR.verbose>=3 && j<=25,
       view_label_seqs(gcf, trn_obs_seq, trn_true_label_seq, trn_pred_label_seq);
       title(gca, ['Training example ' num2str(train_exm_ids(j))]);
       fprintf('Training example %i\n', train_exm_ids(j));
@@ -297,7 +310,7 @@ for iter=1:MAX_NUM_ITER,
     val_pred_label_seq = val_pred_path.label_seq;
     val_acc(j) = mean(val_true_label_seq(1,:)==val_pred_label_seq(1,:));
     
-    if VERBOSE>=2 && iter>=15 && j<=25,
+    if PAR.verbose>=3 && j<=25,
       view_label_seqs(gcf, val_obs_seq, val_true_label_seq, val_pred_label_seq);
       title(gca, ['Hold-out example ' num2str(holdout_exm_ids(j))]);
       fprintf('Hold-out example %i\n', holdout_exm_ids(j));
@@ -308,8 +321,8 @@ for iter=1:MAX_NUM_ITER,
   fprintf(['  LSL validation accuracy:            %2.2f%%\n\n'], ...
           100*mean(val_acc));
   
-  if VERBOSE>=2 && iter>=20,
-    fhs = eval(sprintf('%s(state_model, score_plifs, transition_scores);', ...
+  if PAR.verbose>=2,
+    fhs = eval(sprintf('%s(state_model, score_plifs, PAR, transition_scores);', ...
                        PAR.model_config.func_view_model));
     keyboard
   end  
@@ -320,7 +333,7 @@ for iter=1:MAX_NUM_ITER,
   progress(iter).objective = obj;
   progress(iter).el_time = etime(clock(), t_start);
   
-  % save at every fifth iteration anyway
+  % save at every fifth iteration
   if mod(iter,5)==0,
     fprintf('Saving result...\n\n\n');
     fname = sprintf('lsl_iter%i', iter);
@@ -329,23 +342,23 @@ for iter=1:MAX_NUM_ITER,
          'train_exm_ids', 'holdout_exm_ids', 'progress');
   end
   
-  if VERBOSE>=1,
+  if PAR.verbose>=1,
     plot_progress(progress, fh1);
     pause(1);
   end    
   
   % save and terminate training if no more constraints are generated or
   % the change of the objective function was unsubstantial
-  if all(new_constraints==0) || diff < obj*MIN_REL_OBJ_CHANGE,
+  if all(new_constraints==0) || diff < obj*PAR.min_rel_obj_change,
     fprintf('Saving result...\n\n\n');
     fname = sprintf('lsl_final');
     save([PAR.out_dir fname], 'PAR', 'score_plifs', 'transition_scores', ...
          'trn_acc', 'val_acc', 'A', 'b', 'Q', 'f', 'lb', 'ub', 'slacks', 'res', ...
          'train_exm_ids', 'holdout_exm_ids', 'progress');
    
-    if VERBOSE>=2,
+    if PAR.verbose>=1,
       figure
-      eval(sprintf('%s(state_model, score_plifs, transition_scores);', ...
+      eval(sprintf('%s(state_model, score_plifs, PAR, transition_scores);', ...
                    PAR.model_config.func_view_model));
       figure
       plot(res)

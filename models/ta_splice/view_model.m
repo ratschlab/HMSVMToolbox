@@ -1,5 +1,5 @@
-function fhs = view_model(state_model, score_plifs, transition_scores)
-% fhs = view_model(state_model, score_plifs[, transition_scores])
+function fhs = view_model(state_model, score_plifs, PAR, transition_scores)
+% fhs = view_model(state_model, score_plifs PAR, [transition_scores])
 % plots the score plifs and transition scores
 
 % written by Georg Zeller, MPI Tuebingen, Germany
