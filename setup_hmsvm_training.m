@@ -1,5 +1,9 @@
-% model selection
-
+% Starts HM-SVM training (calling train_hmsvm.m) for different
+% combination of hyperparameters. Can thus be used for cross-validation
+% and model selection.
+%
+% see train_hmsvm.m
+%
 % written by Georg Zeller, MPI Tuebingen, Germany, 2008
 
 USE_RPROC = 0;
@@ -11,7 +15,7 @@ param_names = {'C_small', 'C_smooth', 'C_coupling', ...
 
 parameters = { ...
     [10],  [10], [5], [25], [1, 2, 3], 'LP'; ...
-    [5],  [10], [5], [25], [1, 2, 3], 'QP'; ...
+%    [5],  [10], [5], [25], [1, 2, 3], 'QP'; ...
 %    [0.1], [1], [5], [25], [1, 2, 3], 'QP'; ...
              };
 
@@ -24,11 +28,13 @@ JOB_INFO = [];
 for i=1:size(parameters,1),
   PAR = [];
   % constant parameters
-  PAR.out_dir = [dr_base '_model' num2str(i) '/'];
-  PAR.model_name = 'two_state'
-  PAR.model_dir = ['models/' PAR.model_name '/'];
-  PAR.data_file = data_file;
-  PAR.num_plif_nodes = 20;
+  PAR.out_dir = [dr_base '_model' num2str(i) '/']; % output directory
+  PAR.model_name = 'two_state';                    % name of the learning model
+  PAR.model_dir = ['models/' PAR.model_name '/'];  % model directory
+  PAR.data_file = data_file;                       % name of the training data file
+  PAR.num_plif_nodes = 20;                         % number of supporting points
+                                                   % for each scoring function
+  PAR.constraint_margin = 10;                      % use heuristic training procedure
   
   % parameters for which the best model is selected
   fprintf('Training model %i...\n', i);

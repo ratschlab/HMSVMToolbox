@@ -2,9 +2,10 @@ function progress = train_hmsvm(PAR)
 
 % progress = train_hmsvm(PAR)
 %
-% Main script for HM-SVM training.
+% Trains an HM-SVM.
 %
-% PAR -- a struct to configure the HM-SVM (for specification see model_sel.m)
+% PAR -- a struct to configure the HM-SVM (for specification see
+%   setup_hmsvm_training.m)
 % returns a struct recording the training progress
 %
 % written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany, 2008
@@ -12,7 +13,7 @@ function progress = train_hmsvm(PAR)
 % path to the Shogun toolbox needed for Viterbi decoding
 addpath /fml/ag-raetsch/share/software/matlab_tools/shogun
 % path to cplex optimizer interface needed to solve training problems
-addpath /fml/ag-raetsch/share/software/matlab_tools/cplex9 %10
+addpath opt_interface
 
 % option to enable/disable some extra consistency checks
 if ~isfield(PAR, 'extra_checks'),
@@ -21,7 +22,7 @@ end
 
 % option to control the amount of output
 if ~isfield(PAR, 'verbose'),
-  PAR.verbose = 1;
+  PAR.verbose = 3;
 end
 
 if PAR.verbose>=1,
@@ -57,8 +58,8 @@ end
 % checked in each iteration. Set to inf to always solve the full problem.
 % Throwing away constraints is a HEURISTIC which speeds up training at
 % the cost of losing the guarantee to converge to the correct solution!
-if ~isfield(PAR, 'CONSTRAINT_MARGIN'),
-  PAR.CONSTRAINT_MARGIN = inf;
+if ~isfield(PAR, 'constraint_margin'),
+  PAR.constraint_margin = inf;
 end
 
 % seed for random number generation
@@ -146,7 +147,7 @@ for i=1:length(train_exm_ids),
 end
 
 %%%%% inititialize optimization problem 
-lpenv = cplex_license(1);
+opt_env = cplex_license(1);
 switch PAR.optimization,
  case 'QP',
   [A b Q f lb ub slacks res res_map PAR] ...
@@ -154,7 +155,7 @@ switch PAR.optimization,
  case 'LP',
   [A b f lb ub slacks res res_map PAR] ...
       = init_LP(transition_scores, score_plifs, state_model, PAR);
-  how = lp_set_param(lpenv, 'CPX_PARAM_PREDUAL', 1, 1);
+  how = lp_set_param(opt_env, 'CPX_PARAM_PREDUAL', 1, 1);
   assert(isequal(how, 'OK'));
   Q = []; % just to keep code as general as possible
  otherwise,
@@ -242,18 +243,21 @@ for iter=1:PAR.max_num_iter,
   %%%%% solve intermediate optimization problem
   tic
   c_diff = b - A*res;
-  part_idx = find(c_diff <= PAR.CONSTRAINT_MARGIN);
-  fprintf('Solving problem with %2.1f%% of constraints\n\n', 100*length(part_idx)/length(b));
+  part_idx = find(c_diff <= PAR.constraint_margin);
+  fprintf('Solving problem with %2.1f%% of constraints\n\n', ...
+          100*length(part_idx)/length(b));
 
   switch PAR.optimization,
    case 'QP',
-    [res, lambda, how] = qp_solve(lpenv, Q, f, sparse(A(part_idx,:)), b(part_idx), lb, ub, 0, 1, 'bar');
+    [res, lambda, how] ...
+        = qp_solve(opt_env, Q, f, sparse(A(part_idx,:)), b(part_idx), lb, ub, 0, 1, 'bar');
     if ~isequal(how, 'OK'),
       error(sprintf('Optimizer problem: %s', how));
     end
     obj = 0.5*res'*Q*res + f'*res;
    case 'LP',
-    [res, lambda, how] = lp_solve(lpenv, f, sparse(A(part_idx,:)), b(part_idx), lb, ub, 0, 1, 'bar');
+    [res, lambda, how] ...
+        = lp_solve(opt_env, f, sparse(A(part_idx,:)), b(part_idx), lb, ub, 0, 1, 'bar');
     if ~isequal(how, 'OK'),
       error(sprintf('Optimizer problem: %s', how));
     end
@@ -321,10 +325,9 @@ for iter=1:PAR.max_num_iter,
   fprintf(['  LSL validation accuracy:            %2.2f%%\n\n'], ...
           100*mean(val_acc));
   
-  if PAR.verbose>=2,
-    fhs = eval(sprintf('%s(state_model, score_plifs, PAR, transition_scores);', ...
-                       PAR.model_config.func_view_model));
-    keyboard
+  if PAR.verbose>=3,
+    eval(sprintf('%s(state_model, score_plifs, PAR, transition_scores);', ...
+                 PAR.model_config.func_view_model));
   end  
 
   progress(iter).trn_acc = trn_acc';
@@ -356,16 +359,16 @@ for iter=1:PAR.max_num_iter,
          'trn_acc', 'val_acc', 'A', 'b', 'Q', 'f', 'lb', 'ub', 'slacks', 'res', ...
          'train_exm_ids', 'holdout_exm_ids', 'progress');
    
-    if PAR.verbose>=1,
-      figure
+    if PAR.verbose>=2,
       eval(sprintf('%s(state_model, score_plifs, PAR, transition_scores);', ...
                    PAR.model_config.func_view_model));
       figure
       plot(res)
-      keyboard
+      pause(1)
     end
 
-    % terminate
+    %%%%% terminate
+    cplex_close(opt_env);
     return
   end
 end

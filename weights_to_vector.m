@@ -16,7 +16,7 @@ function w = weights_to_vector(transition_weights, plif_weights, state_model, re
 % res_map -- a mapping between components of the solution vector of the
 %   training problem and the score_plif struct
 % PAR -- a struct to configure the HM-SVM (for specification see
-%   model_sel.m and train_hmsvm.m)
+%   setup_hmsvm_training.m and train_hmsvm.m)
 % returns a vector of weights
 %
 % written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany, 2008

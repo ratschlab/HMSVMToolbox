@@ -16,7 +16,7 @@ function [pred_path true_path pred_path_mmv] = decode_Viterbi(obs_seq, transitio
 % score_plifs -- a struct representation of feature scoring functions
 %   (see also score_plif_struct.h / .cpp)
 % PAR -- a struct to configure the HM-SVM (for specification see
-%   model_sel.m and train_hmsvm.m)
+%   setup_hmsvm_training.m and train_hmsvm.m)
 % true_label_seq -- optional parameter indicating the true label sequence
 %   if given, also true_state_seq has to be specified. In this case used
 %   transitions and plif weights are computed for the true path,

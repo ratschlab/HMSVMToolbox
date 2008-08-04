@@ -14,7 +14,7 @@ function [transition_scores, score_plifs] = res_to_scores(res, state_model, res_
 % score_plifs -- a struct representation of feature scoring functions
 %   (see also score_plif_struct.h / .cpp)
 % PAR -- a struct to configure the HM-SVM (for specification see
-%   model_sel.m and train_hmsvm.m)
+%   setup_hmsvm_training.m and train_hmsvm.m)
 % returns a vector of transition scores and a struct representation of
 %   the feature scoring functions (score_plifs)
 %

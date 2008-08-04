@@ -12,7 +12,7 @@ function [A b Q f lb ub slacks res res_map PAR] = init_QP(transition_scores, sco
 % state_model -- a graphical model which specifies states and allowed
 %   transitions between them
 % PAR -- a struct to configure the HM-SVM (for specification see
-%   model_sel.m and train_hmsvm.m)
+%   setup_hmsvm_training.m and train_hmsvm.m)
 % returns a problem of the form minimize (1/2)*res*Q*res + f*res 
 %     subject to A*res<=b and lb<=res<=ub;
 %   furthermore a vector of slack variables (slacks), a mapping between
