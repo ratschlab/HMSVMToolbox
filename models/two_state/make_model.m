@@ -1,8 +1,19 @@
 function [state_model, A, a_trans] = make_model(PAR, transition_scores)
-% function [state_model, A, a_trans] = make_model(PAR, transition_scores)
-% definition of the state-transition model
 
-% written by Georg Zeller, MPI Tuebingen, Germany
+% [state_model, A, a_trans] = make_model(PAR, [transition_scores])
+%
+% Combines user specification and automatic completion of the
+% state-transition model.
+% 
+% PAR -- a struct of parameters specified in setup_hmsvm_training.m and
+%   train_hmsvm.m
+% transition_scores -- optional parameter; if specified, transition scores
+%   of A and a_trans will be set accordingly (otherwise initialized to 0)
+% returns the fully specified graphical model (state_model), the transition
+%   matrix (A) and its sparse representation used for Viterbi decoding in
+%   Shogun (a_trans)
+%
+% written by Georg Zeller, MPI Tuebingen, Germany, 2007-2008
 
 %%% define state names and corresponding state ids
 STATES = get_state_set(PAR);
@@ -175,3 +186,5 @@ for i=1:length(state_model),
     end
   end
 end
+
+% eof

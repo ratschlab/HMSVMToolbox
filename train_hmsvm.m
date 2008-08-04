@@ -22,7 +22,7 @@ end
 
 % option to control the amount of output
 if ~isfield(PAR, 'verbose'),
-  PAR.verbose = 1;
+  PAR.verbose = 2;
 end
 
 if PAR.verbose>=1,

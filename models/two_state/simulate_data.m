@@ -10,15 +10,15 @@ function data_file = simulate_data()
 % written by Georg Zeller, MPI Tuebingen, Germany
 
 num_exm = 1000;         % number of examples
-exm_len = 200;          % length of each example sequence
+exm_len = 250;          % length of each example sequence
 num_features = 10;      % total number of features
 num_noise_features = 3; % number features to be pure noise
-block_len = [10, 50];   % min an max lentgh of positive block
-num_blocks = [0, 5];    % min and max number of positive block per example
+block_len = [10, 100];  % min an max lentgh of positive block
+num_blocks = [0, 6];    % min and max number of positive block per example
 num_subsets = 5;        % number of subsets for crossvalidation
 
 prop_distort = 0.2;     % proportion of wrong labels
-noise_std = 3;          % standard deviation of Gaussian noise
+noise_std = 4;          % standard deviation of Gaussian noise
 
 
 exm_id = [];

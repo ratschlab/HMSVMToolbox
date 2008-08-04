@@ -12,9 +12,11 @@ function plot_progress(progress, fh)
 
 if exist('fh', 'var'),
   figure(fh);
+  clf
+else
+  figure;
 end
 
-clf
 hold on
 v_acc = mean([progress.val_acc]);
 tr_acc = mean([progress.trn_acc]);

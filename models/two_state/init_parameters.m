@@ -1,8 +1,20 @@
 function [score_plifs transition_scores] = init_parameters(signal, label, state_model, PAR)
+
 % [score_plifs transition_scores] = init_parameters(signal, label, state_model, PAR)
-% initializes the feature scoring PLiFs and transition scores
-  
-% written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany
+%
+% Initializes the feature scoring PLiFs and transition scores.
+%
+% signal -- the feature matrix (sequence of observations) of size m x n
+%   where m is equal to the number of features and n the combined length
+%   of the training sequences
+% label -- (combined) label sequence(s) of total length n
+% state_model -- graphical model (see make_model.m)
+% PAR -- a struct of parameters specified in setup_hmsvm_training.m and
+%   train_hmsvm.m
+% returns a struct representation of feature scoring functions
+%   (score_plifs) and a vector of transition scores
+%
+% written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany, 2007-2008
 
 LABELS = get_label_set();
 
@@ -36,3 +48,5 @@ transition_scores = transition_scores';
 
 %view_model(state_model, score_plifs, transition_scores);
 %keyboard
+
+% eof

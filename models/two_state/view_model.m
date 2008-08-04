@@ -1,8 +1,18 @@
 function fhs = view_model(state_model, score_plifs, PAR, transition_scores)
-% fhs = view_model(state_model, score_plifs, PAR, [transition_scores])
-% plots the score plifs and transition scores
 
-% written by Georg Zeller, MPI Tuebingen, Germany
+% fhs = view_model(state_model, score_plifs, PAR, [transition_scores])
+%
+% Plots the score plifs and transition scores of the given model.
+%
+% state_model -- graphical model (see make_model.m)
+% score_plifs -- a struct representation of feature scoring functions
+% PAR -- a struct of parameters specified in setup_hmsvm_training.m and
+%   train_hmsvm.m
+% transition scores -- (optional) scores associated with allowed
+%   transition between states (see make_model.m)
+% returns a vector of file handles of the model figures
+%
+% written by Georg Zeller, MPI Tuebingen, Germany, 2007-2008
 
 num_features = size(score_plifs,1);
 for s=1:length(state_model),

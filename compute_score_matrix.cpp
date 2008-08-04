@@ -8,7 +8,7 @@
  *		[scr_matrix] = compute_score_matrix(X,score_fcts) 
  *
  * Compile using
- *   mex compute_score_matrix.cpp score_plif_struct.cpp -I/fml/ag-raetsch/share/software/matlab/extern/include 
+ *   mex compute_score_matrix.cpp score_plif_struct.cpp 
  *
  * Written by Gunnar Raetsch & Georg Zeller, MPI Tuebingen, Germany
  */
