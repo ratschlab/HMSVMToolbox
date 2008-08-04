@@ -119,7 +119,7 @@ assert(size(coupling_idx,2)*PAR.num_plif_nodes == num_aux_coupling);
 assert(num_aux == num_aux_small+num_aux_smooth+num_aux_coupling);
 
 %%%   iv) slack variables
-slacks = zeros(PAR.num_exm,1);
+slacks = zeros(PAR.num_train_exm,1);
 res = [res; slacks];
 
 INF = 1e20;
@@ -128,12 +128,12 @@ f =  [zeros(num_param,1); ...
       PAR.C_small*ones(num_aux_small,1); ...
       PAR.C_smooth*ones(num_aux_smooth,1); ...
       PAR.C_coupling*ones(num_aux_coupling,1); ...
-      ones(PAR.num_exm,1)];
+      ones(PAR.num_train_exm,1)];
 lb = [-INF*ones(num_param,1); ...
       zeros(num_aux_small,1); ...
       zeros(num_aux_smooth,1); ...
       zeros(num_aux_coupling,1); ...
-      zeros(PAR.num_exm,1)];
+      zeros(PAR.num_train_exm,1)];
 ub = INF*ones(length(res),1);
 
 A = sparse(zeros(2*num_aux, length(res)));
@@ -239,7 +239,7 @@ assert(cnt-1 == length(b));
 PAR.num_trans_score = length(transition_scores);
 PAR.num_param       = num_param;
 PAR.num_aux         = num_aux;
-PAR.num_opt_var     = num_param+num_aux+PAR.num_exm;
+PAR.num_opt_var     = num_param+num_aux+PAR.num_train_exm;
 
 %imagesc(A);
 %keyboard

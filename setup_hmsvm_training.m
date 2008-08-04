@@ -6,23 +6,47 @@
 %
 % written by Georg Zeller, MPI Tuebingen, Germany, 2008
 
+% option to use rproc tools to submit training jobs to a cluster
 USE_RPROC = 0;
 
-crossvalidation_subsets = [1, 2, 3, 4, 5];
+% number of subsets used for cross-validation
+num_xval_subsets = 5;
 
-param_names = {'C_small', 'C_smooth', 'C_coupling', ...
-               'num_exm', 'train_subsets', 'optimization'}
+% names of parameters to be independently specified (possibly differently
+% between training runs) 
+param_names = {'C_small', ...
+               'C_smooth', ...
+               'C_coupling', ...
+               'num_train_exm', ...
+               'optimization'...
+               'train_subsets', ...
+              };
 
+% parameter combinations to be used for independent training
 parameters = { ...
-    [0.1],  [5], [5], [100], [1], 'LP'; ...
-%    [5],  [10], [5], [100], [1], 'QP'; ...
-%    [0.1], [1], [5], [100], [1], 'QP'; ...
+    [0.1],  [5], [5], [100], 'LP', [1]; ...
+%    [5] ,  [10], [5], [100], 'QP', [1]; ...
+%    [0.1],  [1], [5], [100], 'QP', [1]; ...
              };
+assert(size(parameters,2) == length(param_names));
 
+% basic data directory
 dr_base = ['~/hmsvm_toydata/segmentation/'...
            'hmsvm_result_' datestr(now,'yyyy-mm-dd_HHhMM')]
 
+% seed for random number generation
+rand('seed', 11081979);
+
+% partition data for cross-validation
 data_file = '~/hmsvm_toydata/hmsvm_data.mat';
+load(data_file, 'exm_id');
+exm_id = unique(exm_id);
+exm_id = exm_id(randperm(length(exm_id)));
+subset_ends = round(linspace(0,length(exm_id),num_xval_subsets+1));
+for i=1:num_xval_subsets,
+  exm_subsets{i} = sort(exm_id(subset_ends(i)+1:subset_ends(i+1)));
+end
+assert(isequal(sort([exm_subsets{:}]), sort(exm_id)));
 
 JOB_INFO = [];
 for i=1:size(parameters,1),
@@ -36,7 +60,7 @@ for i=1:size(parameters,1),
                                                    % for each scoring function
   PAR.constraint_margin = 10;                      % use heuristic training procedure
   
-  % parameters for which the best model is selected
+  % parameters which vary across HM-SVM training runs
   fprintf('Training model %i...\n', i);
   for j=1:length(param_names),
     if length(parameters{i,j}) == 1,
@@ -51,14 +75,24 @@ for i=1:size(parameters,1),
     PAR = setfield(PAR, param_names{j}, parameters{i,j});
   end
   fprintf('\n\n');
-  
-  if isfield(PAR, 'train_subsets'),
-    assert(all(ismember(PAR.train_subsets, crossvalidation_subsets)));
-    holdout_subsets = setdiff(crossvalidation_subsets, PAR.train_subsets);
-    assert(length(holdout_subsets)>=2);
-    PAR.vald_subsets = holdout_subsets(1);
-    PAR.test_subsets = holdout_subsets(2:end);
+
+  % assign example sequences to training, validation and test set
+  assert(isfield(PAR, 'train_subsets'));
+  PAR.vald_subsets = max(PAR.train_subsets)+1;
+  if PAR.vald_subsets>num_xval_subsets,
+    PAR.vald_subsets = mod(PAR.vald_subsets,num_xval_subsets);
   end
+  assert(all(ismember(PAR.train_subsets, [1:num_xval_subsets])));
+  assert(all(ismember(PAR.vald_subsets,  [1:num_xval_subsets])));
+  PAR.test_subsets = setdiff(1:num_xval_subsets, ...
+                             [PAR.train_subsets PAR.vald_subsets]);
+  PAR.train_exms = [exm_subsets{PAR.train_subsets}];
+  PAR.vald_exms  = [exm_subsets{PAR.vald_subsets}];
+  PAR.test_exms  = [exm_subsets{PAR.test_subsets}];
+  assert(isempty(intersect(PAR.train_exms, PAR.vald_exms)));
+  assert(isempty(intersect(PAR.test_exms, [PAR.train_exms, PAR.vald_exms])));
+  assert(length(PAR.train_exms) >= PAR.num_train_exm);
+  
   disp(PAR)
 
   if USE_RPROC,
@@ -69,7 +103,7 @@ for i=1:size(parameters,1),
     RPROC_OPT.immediately    = 0;
     RPROC_OPT.arch           = 64; % take only 64 bit nodes
     RPROC_OPT.identifier     = sprintf('hmsvm_tr_m%i_',i);
-    RPROC_TIME               = 12*(PAR.num_exm/100)*60; % mins
+    RPROC_TIME               = 12*(PAR.num_train_exm/100)*60; % mins
     
     JOB_INFO{end+1} = rproc('train_hmsvm', ...
                             PAR, RPROC_MEMREQ, RPROC_OPT, RPROC_TIME);

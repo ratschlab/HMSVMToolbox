@@ -57,7 +57,7 @@ end
 % substitute some features by pure noise
 ridx = randperm(num_features);
 ridx = ridx(1:num_noise_features);
-signal(ridx,:) = 2*randn(length(ridx), size(label,2));
+signal(ridx,:) = noise_std*randn(length(ridx), size(label,2));
 fprintf('noise features: %i\n', ridx);
 
 data_dir = '~/hmsvm_toydata/';

@@ -34,7 +34,6 @@ legend({'rel. objective value', 'training accuracy', ...
         'validation accuracy'}, 'Location', 'NorthWest');
 grid on
 axis([0 length(progress)+1 0 1]);
-set(gca, 'XTick', 1:length(progress));
 for i=5:5:length(progress),
   text(i, 0.05, sprintf('%.0f min', progress(i).el_time/60));
 end

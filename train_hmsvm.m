@@ -69,12 +69,13 @@ rand('seed', 11081979);
 assert(isfield(PAR, 'C_small'));
 assert(isfield(PAR, 'C_smooth'));
 assert(isfield(PAR, 'C_coupling'));
-assert(isfield(PAR, 'num_exm'));
+assert(isfield(PAR, 'num_train_exm'));
 assert(isfield(PAR, 'data_file'));
 assert(isfield(PAR, 'out_dir'));
 assert(isfield(PAR, 'model_dir'));
 assert(isfield(PAR, 'optimization'));
-assert(isfield(PAR, 'train_subsets'));
+assert(isfield(PAR, 'train_exms'));
+assert(isfield(PAR, 'vald_exms'));
 
 if ~exist(PAR.out_dir, 'dir'),
   mkdir(PAR.out_dir);
@@ -91,29 +92,22 @@ disp(PAR.data_file);
 
 
 %%%%% load data and select training examples
-data = load(PAR.data_file, 'pos_id', 'label', 'signal', 'exm_id', 'subset_id');
-PAR.train_idx = find(ismember(data.subset_id, PAR.train_subsets));
-train_exm_ids = unique(data.exm_id(PAR.train_idx));
-PAR.vald_idx = find(ismember(data.subset_id, PAR.vald_subsets));
-vald_exm_ids = unique(data.exm_id(PAR.vald_idx));
-
-pos_id      = data.pos_id;
+data = load(PAR.data_file, 'label', 'signal', 'exm_id');
 label       = data.label;
 signal      = data.signal;
 exm_id      = data.exm_id;
 state_label = nan(size(label));
 clear data
-
 PAR.num_features = size(signal,1);
 
 % randomize order of potential training example before subselection
+train_exm_ids   = PAR.train_exms;
 r_idx = randperm(length(train_exm_ids));
 train_exm_ids = train_exm_ids(r_idx);
-% for validation use validation sets and unused training examples
-holdout_exm_ids = train_exm_ids(PAR.num_exm+1:end);
-holdout_exm_ids = [holdout_exm_ids vald_exm_ids];
-% subselect PAR.num_exm sequences for training
-train_exm_ids = train_exm_ids(1:PAR.num_exm);
+% subselect PAR.num_train_exm sequences for training
+train_exm_ids = train_exm_ids(1:PAR.num_train_exm);
+% for performance checks use sequences from validation set
+holdout_exm_ids = PAR.vald_exms;
 assert(isempty(intersect(train_exm_ids, holdout_exm_ids)));
 fprintf('\nusing %i sequences for training.\n', ...
         length(train_exm_ids));
@@ -178,7 +172,7 @@ last_obj = 0;
 t_start = clock();
 
 for iter=1:PAR.max_num_iter,
-  new_constraints = zeros(1,PAR.num_exm);
+  new_constraints = zeros(1,PAR.num_train_exm);
   tic
   for i=1:length(train_exm_ids),
     idx = find(exm_id==train_exm_ids(i));
@@ -220,7 +214,7 @@ for iter=1:PAR.max_num_iter,
     %%%%% add constraints for examples which have not been decoded correctly
     %%%%% and for which a margin violator has been found
     if score_delta + slacks(i) < loss - PAR.epsilon && trn_acc(i)<PAR.max_accuracy,
-      v = zeros(1,PAR.num_exm);
+      v = zeros(1,PAR.num_train_exm);
       v(i) = 1;
       A = [A; -weight_delta zeros(1, PAR.num_aux) -v];
       b = [b; -loss];
@@ -266,8 +260,8 @@ for iter=1:PAR.max_num_iter,
     error(sprintf('unknown optimization: %s', PAR.optimization));
   end
   fprintf('\nSolving the optimization problem took %3.2f sec\n', toc);
-  assert(length(res) == PAR.num_param+PAR.num_aux+PAR.num_exm);
-  slacks = res(end-PAR.num_exm+1:end);
+  assert(length(res) == PAR.num_param+PAR.num_aux+PAR.num_train_exm);
+  slacks = res(end-PAR.num_train_exm+1:end);
   diff = obj - last_obj;
   % error if objective is not monotonically increasing
   if diff < -PAR.epsilon,
@@ -351,8 +345,11 @@ for iter=1:PAR.max_num_iter,
   end    
   
   % save and terminate training if no more constraints are generated or
-  % the change of the objective function was unsubstantial
-  if all(new_constraints==0) || diff < obj*PAR.min_rel_obj_change,
+  % the change of the objective function over the last three iterations
+  % was unsubstantial
+  if all(new_constraints==0) ...
+        || (iter>3 ...
+            && obj-progress(iter-3).objective < obj* PAR.min_rel_obj_change), ...
     fprintf('Saving result...\n\n\n');
     fname = sprintf('lsl_final');
     save([PAR.out_dir fname], 'PAR', 'score_plifs', 'transition_scores', ...
