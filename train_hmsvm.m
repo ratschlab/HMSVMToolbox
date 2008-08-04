@@ -74,8 +74,6 @@ assert(isfield(PAR, 'data_file'));
 assert(isfield(PAR, 'out_dir'));
 assert(isfield(PAR, 'model_dir'));
 assert(isfield(PAR, 'optimization'));
-assert(isfield(PAR, 'train_exms'));
-assert(isfield(PAR, 'vald_exms'));
 
 if ~exist(PAR.out_dir, 'dir'),
   mkdir(PAR.out_dir);
@@ -100,19 +98,44 @@ state_label = nan(size(label));
 clear data
 PAR.num_features = size(signal,1);
 
-% randomize order of potential training example before subselection
-train_exm_ids   = PAR.train_exms;
-r_idx = randperm(length(train_exm_ids));
-train_exm_ids = train_exm_ids(r_idx);
-% subselect PAR.num_train_exm sequences for training
-train_exm_ids = train_exm_ids(1:PAR.num_train_exm);
-% for performance checks use sequences from validation set
-holdout_exm_ids = PAR.vald_exms;
-assert(isempty(intersect(train_exm_ids, holdout_exm_ids)));
-fprintf('\nusing %i sequences for training.\n', ...
-        length(train_exm_ids));
-fprintf('using %i sequences for performance estimation.\n\n', ...
-        length(holdout_exm_ids));
+if isfield(PAR, 'train_exms'),
+  % randomize order of potential training example before subselection
+  train_exm_ids = PAR.train_exms;
+  train_exm_ids = train_exm_ids(randperm(length(train_exm_ids)));
+  % subselect PAR.num_train_exm sequences for training
+  train_exm_ids = train_exm_ids(1:PAR.num_train_exm);
+  fprintf('\nusing %i sequences for training.\n', ...
+          length(train_exm_ids));
+  % for performance checks use sequences from validation set if given
+  if isfield(PAR, 'vald_exms'),
+    holdout_exm_ids = PAR.vald_exms;
+    assert(isempty(intersect(train_exm_ids, holdout_exm_ids)));
+    fprintf('using %i sequences for performance estimation.\n\n', ...
+            length(holdout_exm_ids));
+  else
+    holdout_exm_ids = [];
+    fprintf('skipping performance estimation.\n\n');
+  end
+else
+  % if training examples are not specified use all loaded sequences
+  warning('No training set specified, treating whole data as training set!');
+  assert(~isfield(PAR, 'vald_exms'));
+  assert(~isfield(PAR, 'test_exms'));
+  
+  train_exm_ids = unique(exm_id);
+  train_exm_ids = train_exm_ids(randperm(length(train_exm_ids)));
+  % subselect PAR.num_train_exm sequences for training
+  train_exm_ids = train_exm_ids(1:PAR.num_train_exm);
+  fprintf('\nusing %i sequences for training.\n', ...
+          length(train_exm_ids));
+  % from the remainder take as many sequences for performance checks
+  holdout_exm_ids = setdiff(unique(exm_id), train_exm_ids);
+  holdout_exm_ids = holdout_exm_ids(randperm(length(holdout_exm_ids)));
+  holdout_exm_ids = holdout_exm_ids(1:PAR.num_train_exm);
+  assert(isempty(intersect(train_exm_ids, holdout_exm_ids)));
+  fprintf('using %i sequences for performance estimation.\n\n', ...
+          length(holdout_exm_ids));
+end
 
 
 %%%%% assemble model and score function structs,
@@ -298,34 +321,36 @@ for iter=1:PAR.max_num_iter,
   fprintf(['\nIteration %i:\n' ...
            '  LSL training accuracy:              %2.2f%%\n'], ...
           iter, 100*mean(trn_acc));
+  progress(iter).trn_acc = trn_acc';
   
   %%%%% check prediction accuracy on holdout examples
-  for j=1:length(holdout_exm_ids),
-    val_idx = find(exm_id==holdout_exm_ids(j));
-    val_obs_seq = signal(:,val_idx);
-    val_pred_path = decode_Viterbi(val_obs_seq, transition_scores, score_plifs, PAR);
-    val_true_label_seq = label(val_idx);
-    val_pred_label_seq = val_pred_path.label_seq;
-    val_acc(j) = mean(val_true_label_seq(1,:)==val_pred_label_seq(1,:));
-    
-    if PAR.verbose>=3 && j<=25,
-      view_label_seqs(gcf, val_obs_seq, val_true_label_seq, val_pred_label_seq);
-      title(gca, ['Hold-out example ' num2str(holdout_exm_ids(j))]);
-      fprintf('Hold-out example %i\n', holdout_exm_ids(j));
-      fprintf('  Example accuracy: %3.2f%%\n', 100*val_acc(j));
-      pause
+  if ~isempty(holdout_exm_ids),
+    for j=1:length(holdout_exm_ids),
+      val_idx = find(exm_id==holdout_exm_ids(j));
+      val_obs_seq = signal(:,val_idx);
+      val_pred_path = decode_Viterbi(val_obs_seq, transition_scores, score_plifs, PAR);
+      val_true_label_seq = label(val_idx);
+      val_pred_label_seq = val_pred_path.label_seq;
+      val_acc(j) = mean(val_true_label_seq(1,:)==val_pred_label_seq(1,:));
+      
+      if PAR.verbose>=3 && j<=25,
+        view_label_seqs(gcf, val_obs_seq, val_true_label_seq, val_pred_label_seq);
+        title(gca, ['Hold-out example ' num2str(holdout_exm_ids(j))]);
+        fprintf('Hold-out example %i\n', holdout_exm_ids(j));
+        fprintf('  Example accuracy: %3.2f%%\n', 100*val_acc(j));
+        pause
+      end
     end
+    fprintf(['  LSL validation accuracy:            %2.2f%%\n\n'], ...
+            100*mean(val_acc));
+    progress(iter).val_acc = val_acc';
   end
-  fprintf(['  LSL validation accuracy:            %2.2f%%\n\n'], ...
-          100*mean(val_acc));
   
   if PAR.verbose>=3,
     eval(sprintf('%s(state_model, score_plifs, PAR, transition_scores);', ...
                  PAR.model_config.func_view_model));
   end  
 
-  progress(iter).trn_acc = trn_acc';
-  progress(iter).val_acc = val_acc';
   progress(iter).gen_constraints = new_constraints';
   progress(iter).objective = obj;
   progress(iter).el_time = etime(clock(), t_start);

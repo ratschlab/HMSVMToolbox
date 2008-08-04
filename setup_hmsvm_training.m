@@ -109,6 +109,9 @@ for i=1:size(parameters,1),
                             PAR, RPROC_MEMREQ, RPROC_OPT, RPROC_TIME);
     fprintf('\nSubmitted job %i\n\n', length(JOB_INFO));
   else
+    
+    keyboard
+    
     train_hmsvm(PAR);
   end
 end

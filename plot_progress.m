@@ -18,20 +18,29 @@ else
 end
 
 hold on
-v_acc = mean([progress.val_acc]);
-tr_acc = mean([progress.trn_acc]);
 r_obj = [progress.objective] ./ max([progress.objective]);
 plot(r_obj, '.--k');
+
+tr_acc = mean([progress.trn_acc]);
 plot(tr_acc, '.-b');
-plot(v_acc, '.-r');
+
+lg = {'rel. objective value', 'training accuracy'};
+
+if isfield(progress, 'val_acc'),
+  v_acc = mean([progress.val_acc]);
+  plot(v_acc, '.-r');
+  lg{end+1} = 'validation accuracy';
+end
+
 plot(length(progress), r_obj(end), 'dk');
 plot(length(progress), tr_acc(end), 'db');
-plot(length(progress), v_acc(end), 'dr');
+if isfield(progress, 'val_acc'),
+  plot(length(progress), v_acc(end), 'dr');
+end
 
 xlabel('iteration');
 ylabel('accuracy / relative objective');
-legend({'rel. objective value', 'training accuracy', ...
-        'validation accuracy'}, 'Location', 'NorthWest');
+legend(lg, 'Location', 'NorthWest');
 grid on
 axis([0 length(progress)+1 0 1]);
 for i=5:5:length(progress),
