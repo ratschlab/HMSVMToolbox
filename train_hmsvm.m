@@ -12,8 +12,6 @@ function progress = train_hmsvm(PAR)
 
 % path to the Shogun toolbox needed for Viterbi decoding
 addpath /fml/ag-raetsch/share/software/matlab_tools/shogun
-% path to cplex optimizer interface needed to solve training problems
-addpath opt_interface
 
 % option to enable/disable some extra consistency checks
 if ~isfield(PAR, 'extra_checks'),
@@ -62,6 +60,15 @@ if ~isfield(PAR, 'constraint_margin'),
   PAR.constraint_margin = inf;
 end
 
+% optimization software used to solve the (intermediate) training
+% problem(s). Currently there are two possibilities: 'cplex' or 'mosek'
+if ~isfield(PAR, 'optimizer'),
+  PAR.optimizer = 'mosek';
+end
+% path to the optimizer interface
+addpath(sprintf('opt_interface/%s', PAR.optimizer));
+
+
 % seed for random number generation
 rand('seed', 11081979);
 
@@ -73,7 +80,7 @@ assert(isfield(PAR, 'num_train_exm'));
 assert(isfield(PAR, 'data_file'));
 assert(isfield(PAR, 'out_dir'));
 assert(isfield(PAR, 'model_dir'));
-assert(isfield(PAR, 'optimization'));
+assert(isfield(PAR, 'reg_type'));
 
 if ~exist(PAR.out_dir, 'dir'),
   mkdir(PAR.out_dir);
@@ -109,6 +116,12 @@ if isfield(PAR, 'train_exms'),
   % for performance checks use sequences from validation set if given
   if isfield(PAR, 'vald_exms'),
     holdout_exm_ids = PAR.vald_exms;
+    % choose random subset for validation if there are too many
+    % validation examples
+    if length(holdout_exm_ids) > 5*PAR.num_train_exm,
+      holdout_exm_ids = holdout_exm_ids(randperm(length(holdout_exm_ids)));
+      holdout_exm_ids = holdout_exm_ids(1:5*PAR.num_train_exm);
+    end
     assert(isempty(intersect(train_exm_ids, holdout_exm_ids)));
     fprintf('using %i sequences for performance estimation.\n\n', ...
             length(holdout_exm_ids));
@@ -164,19 +177,19 @@ for i=1:length(train_exm_ids),
 end
 
 %%%%% inititialize optimization problem 
-opt_env = cplex_license(1);
-switch PAR.optimization,
+opt_env = opt_license(1);
+switch PAR.reg_type,
  case 'QP',
   [A b Q f lb ub slacks res res_map PAR] ...
       = init_QP(transition_scores, score_plifs, state_model, PAR);
  case 'LP',
   [A b f lb ub slacks res res_map PAR] ...
       = init_LP(transition_scores, score_plifs, state_model, PAR);
-  how = cplex_set_param(opt_env, 'CPX_PARAM_PREDUAL', 1, 1);
+  how = opt_set_param(opt_env, 'CPX_PARAM_PREDUAL', 1, 1);
   assert(isequal(how, 'OK'));
   Q = []; % just to keep code as general as possible
  otherwise,
-  error(sprintf('unknown optimization: %s', PAR.optimization));
+  error(sprintf('unknown reg_type: %s', PAR.reg_type));
 end
 assert(length(res) == PAR.num_opt_var);
 assert(all(size(res_map) == size(score_plifs)));
@@ -264,7 +277,7 @@ for iter=1:PAR.max_num_iter,
   fprintf('Solving problem with %2.1f%% of constraints\n\n', ...
           100*length(part_idx)/length(b));
 
-  switch PAR.optimization,
+  switch PAR.reg_type,
    case 'QP',
     [res, lambda, how] ...
         = qp_solve(opt_env, Q, f, sparse(A(part_idx,:)), b(part_idx), lb, ub, 0, 1, 'bar');
@@ -280,7 +293,7 @@ for iter=1:PAR.max_num_iter,
     end
     obj = f'*res;
    otherwise,
-    error(sprintf('unknown optimization: %s', PAR.optimization));
+    error(sprintf('unknown reg_type: %s', PAR.reg_type));
   end
   fprintf('\nSolving the optimization problem took %3.2f sec\n', toc);
   assert(length(res) == PAR.num_param+PAR.num_aux+PAR.num_train_exm);
@@ -390,7 +403,7 @@ for iter=1:PAR.max_num_iter,
     end
 
     %%%%% terminate
-    cplex_close(opt_env);
+    opt_close(opt_env);
     return
   end
 end
