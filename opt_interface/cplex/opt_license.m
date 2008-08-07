@@ -1,6 +1,6 @@
-function opt_env = cplex_license(waitflag, license_no)
+function opt_env = opt_license(waitflag, license_no)
 
-% opt_env = cplex_license([waitflag], [license_no])
+% opt_env = opt_license([waitflag], [license_no])
 %
 % Gets a CPLEX license and returns an environmental pointer to this
 % solver instance.

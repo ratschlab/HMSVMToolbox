@@ -1,6 +1,6 @@
-function cplex_close(opt_env_)
+function opt_close(opt_env_)
 
-% cplex_close(opt_env)
+% opt_close(opt_env)
 %
 % Quits CPLEX, freeing the license specified by opt_env_.
 %

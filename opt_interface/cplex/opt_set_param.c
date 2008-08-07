@@ -155,7 +155,7 @@ void mexFunction(
       if (!mxIsNumeric(prhs[3]) || mxIsComplex(prhs[3]) 
 	  ||  mxIsSparse(prhs[3])
 	  || !(mxGetM(prhs[3])==1 && mxGetN(prhs[3])==1)) {
-	mexErrMsgTxt("4th argument (value) must be "
+	mexErrMsgTxt("4th argument (display) must be "
 		     "an integer scalar.");
 	return;
       }
