@@ -10,8 +10,8 @@ function progress = train_hmsvm(PAR)
 %
 % written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany, 2008
 
-% path to the Shogun toolbox needed for Viterbi decoding
-addpath /fml/ag-raetsch/share/software/matlab_tools/shogun
+% adjust set_hmsvm_paths.m to point to the correct directories
+set_hmsvm_paths();
 
 % option to enable/disable some extra consistency checks
 if ~isfield(PAR, 'extra_checks'),
@@ -118,9 +118,9 @@ if isfield(PAR, 'train_exms'),
     holdout_exm_ids = PAR.vald_exms;
     % choose random subset for validation if there are too many
     % validation examples
-    if length(holdout_exm_ids) > 5*PAR.num_train_exm,
+    if length(holdout_exm_ids) > PAR.num_train_exm,
       holdout_exm_ids = holdout_exm_ids(randperm(length(holdout_exm_ids)));
-      holdout_exm_ids = holdout_exm_ids(1:5*PAR.num_train_exm);
+      holdout_exm_ids = holdout_exm_ids(1:PAR.num_train_exm);
     end
     assert(isempty(intersect(train_exm_ids, holdout_exm_ids)));
     fprintf('using %i sequences for performance estimation.\n\n', ...
@@ -372,7 +372,7 @@ for iter=1:PAR.max_num_iter,
   if mod(iter,5)==0,
     fprintf('Saving result...\n\n\n');
     fname = sprintf('lsl_iter%i', iter);
-    save([PAR.out_dir fname], 'PAR', 'score_plifs', 'transition_scores', ...
+    save([PAR.out_dir fname], 'PAR', 'state_model', 'score_plifs', 'transition_scores', ...
          'trn_acc', 'val_acc', 'A', 'b', 'Q', 'f', 'lb', 'ub', 'slacks', 'res', ...
          'train_exm_ids', 'holdout_exm_ids', 'progress');
   end
@@ -390,7 +390,7 @@ for iter=1:PAR.max_num_iter,
             && obj-progress(iter-3).objective < obj* PAR.min_rel_obj_change), ...
     fprintf('Saving result...\n\n\n');
     fname = sprintf('lsl_final');
-    save([PAR.out_dir fname], 'PAR', 'score_plifs', 'transition_scores', ...
+    save([PAR.out_dir fname], 'PAR', , 'state_model''score_plifs', 'transition_scores', ...
          'trn_acc', 'val_acc', 'A', 'b', 'Q', 'f', 'lb', 'ub', 'slacks', 'res', ...
          'train_exm_ids', 'holdout_exm_ids', 'progress');
    
