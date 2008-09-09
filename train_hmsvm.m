@@ -15,7 +15,7 @@ set_hmsvm_paths();
 
 % option to enable/disable some extra consistency checks
 if ~isfield(PAR, 'extra_checks'),
-  PAR.extra_checks = 1;
+  PAR.extra_checks = 0;
 end
 
 % option to control the amount of output
@@ -43,6 +43,11 @@ end
 if ~isfield(PAR, 'max_accuracy'),
   PAR.max_accuracy = 0.99;
 end
+% and if the max margin violator incurs a loss at least as high as this
+% parameter
+if ~isfield(PAR, 'min_loss'),
+  PAR.min_loss = 1;
+end
 
 % numerical tolerance to check consistent score calculation, constraint
 % satisfaction and monotonictiy of the objective function
@@ -68,6 +73,10 @@ end
 % path to the optimizer interface
 addpath(sprintf('opt_interface/%s', PAR.optimizer));
 
+% subsample validation examples to the indicated number
+if ~isfield(PAR, 'max_num_vald_exms'),
+  PAR.max_num_vald_exms = 100;
+end
 
 % seed for random number generation
 rand('seed', 11081979);
@@ -118,9 +127,9 @@ if isfield(PAR, 'train_exms'),
     holdout_exm_ids = PAR.vald_exms;
     % choose random subset for validation if there are too many
     % validation examples
-    if length(holdout_exm_ids) > PAR.num_train_exm,
+    if length(holdout_exm_ids) > PAR.max_num_vald_exms,
       holdout_exm_ids = holdout_exm_ids(randperm(length(holdout_exm_ids)));
-      holdout_exm_ids = holdout_exm_ids(1:PAR.num_train_exm);
+      holdout_exm_ids = holdout_exm_ids(1:PAR.max_num_vald_exms);
     end
     assert(isempty(intersect(train_exm_ids, holdout_exm_ids)));
     fprintf('using %i sequences for performance estimation.\n\n', ...
@@ -144,7 +153,6 @@ else
   % from the remainder take as many sequences for performance checks
   holdout_exm_ids = setdiff(unique(exm_id), train_exm_ids);
   holdout_exm_ids = holdout_exm_ids(randperm(length(holdout_exm_ids)));
-  holdout_exm_ids = holdout_exm_ids(1:PAR.num_train_exm);
   assert(isempty(intersect(train_exm_ids, holdout_exm_ids)));
   fprintf('using %i sequences for performance estimation.\n\n', ...
           length(holdout_exm_ids));
@@ -163,7 +171,7 @@ assert(~any(isnan([score_plifs.limits])));
 assert(~any(isnan([score_plifs.scores])));
 assert(~any(isnan(transition_scores)));
 
-%%% determine the true state sequence for each example from its label sequence
+%%%%% determine the true state sequence for each example from its label sequence
 for i=1:length(train_exm_ids),
   idx = find(exm_id==train_exm_ids(i));
   true_label_seq = label(idx);
@@ -216,7 +224,7 @@ for iter=1:PAR.max_num_iter,
     true_label_seq = label(idx);
     true_state_seq = state_label(idx);
     
-    %%%%% Viterbi decoding
+    %%% Viterbi decoding
     [pred_path true_path pred_path_mmv] ...
         = decode_Viterbi(obs_seq, transition_scores, score_plifs, ...
                          PAR, true_label_seq, true_state_seq);
@@ -247,9 +255,13 @@ for iter=1:PAR.max_num_iter,
 
     score_delta = weight_delta*res(1:PAR.num_param);
     
-    %%%%% add constraints for examples which have not been decoded correctly
-    %%%%% and for which a margin violator has been found
-    if score_delta + slacks(i) < loss - PAR.epsilon && trn_acc(i)<PAR.max_accuracy,
+    %%% add constraints for examples which have not been decoded correctly
+    %%% and for which a margin violator has been found
+% standard HM-SVM constraint addition check
+%    if score_delta + slacks(i) < loss - PAR.epsilon && trn_acc(i)<PAR.max_accuracy,
+% practically working heuristic???
+    if norm(weight_delta)>0 && loss>PAR.min_loss && trn_acc(i)<PAR.max_accuracy
+    
       v = zeros(1,PAR.num_train_exm);
       v(i) = 1;
       A = [A; -weight_delta zeros(1, PAR.num_aux) -v];
@@ -270,7 +282,7 @@ for iter=1:PAR.max_num_iter,
   fprintf('Generated %i new constraints\n\n', sum(new_constraints));
   fprintf('Constraint generation took %3.2f sec\n\n', toc);
 
-  %%%%% solve intermediate optimization problem
+  %%% solve intermediate optimization problem
   tic
   c_diff = b - A*res;
   part_idx = find(c_diff <= PAR.constraint_margin);
@@ -309,12 +321,12 @@ for iter=1:PAR.max_num_iter,
   fprintf('  %.1f%% of constraints satisfied\n\n', ...
           100*mean(A*res <= b+PAR.epsilon));
 
-  %%%%% extract parameters from optimization problem & update model 
-  %%%%% (i.e. transition scores & score PLiFs)
+  %%% extract parameters from optimization problem & update model 
+  %%% (i.e. transition scores & score PLiFs)
   [transition_scores, score_plifs] = res_to_scores(res, state_model, res_map, ...
                                                    score_plifs, PAR);
   
-  %%%%% check prediction accuracy on training examples
+  %%% check prediction accuracy on training examples
   for j=1:length(train_exm_ids),
     trn_idx = find(exm_id==train_exm_ids(j));
     trn_obs_seq = signal(:,trn_idx);
@@ -336,7 +348,7 @@ for iter=1:PAR.max_num_iter,
           iter, 100*mean(trn_acc));
   progress(iter).trn_acc = trn_acc';
   
-  %%%%% check prediction accuracy on holdout examples
+  %%% check prediction accuracy on holdout examples
   if ~isempty(holdout_exm_ids),
     for j=1:length(holdout_exm_ids),
       val_idx = find(exm_id==holdout_exm_ids(j));
@@ -382,15 +394,14 @@ for iter=1:PAR.max_num_iter,
     pause(1);
   end    
   
-  % save and terminate training if no more constraints are generated or
-  % the change of the objective function over the last three iterations
-  % was unsubstantial
+  %%% save and terminate training if no more constraints are generated or
+  %%% the change of the objective function over the last three iterations
+  %%% was unsubstantial
   if all(new_constraints==0) ...
-        || (iter>3 ...
-            && obj-progress(iter-3).objective < obj* PAR.min_rel_obj_change), ...
+        || (iter>3 && obj-progress(iter-3).objective < obj* PAR.min_rel_obj_change),
     fprintf('Saving result...\n\n\n');
     fname = sprintf('lsl_final');
-    save([PAR.out_dir fname], 'PAR', , 'state_model''score_plifs', 'transition_scores', ...
+    save([PAR.out_dir fname], 'PAR', 'state_model', 'score_plifs', 'transition_scores', ...
          'trn_acc', 'val_acc', 'A', 'b', 'Q', 'f', 'lb', 'ub', 'slacks', 'res', ...
          'train_exm_ids', 'holdout_exm_ids', 'progress');
    
@@ -402,7 +413,7 @@ for iter=1:PAR.max_num_iter,
       pause(1)
     end
 
-    %%%%% terminate
+    % terminate
     opt_close(opt_env);
     return
   end

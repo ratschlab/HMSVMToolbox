@@ -12,6 +12,11 @@ function opt_env = opt_license(waitflag, license_no)
 %
 % written by Georg Zeller, MPI Tuebingen, Germany, 2008
 
+setenv('MOSEKLM_LICENSE_FILE', ...
+       '/fml/ag-raetsch/home/zeller/mosek.lic');
+setenv('LD_LIBRARY_PATH', ...
+       '/fml/ag-raetsch/share/software/mosek/5/toolbox/r2006b/');
 
-% TODO so far, no licesning system is used...
+addpath /fml/ag-raetsch/share/software/mosek/5/toolbox/r2006b
+
 opt_env = 0;

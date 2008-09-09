@@ -19,7 +19,15 @@ How to install the HM-SVM toolbox?
 
 4) Adjust and compile solver interface
 
-  See README in the opt_interface subdirectory.
+  If you want to use the CPLEX otimizer, compile its interface
+  (see README file in opt_interface/cplex/).
+
+  The interface for the Mosek optimizer does not need compilation,
+  it should run right away once library and license paths have been 
+  set properly ((see README file in opt_interface/mosek/).
+  
+  For more details see the README files in the opt_interface 
+  subdirectories cplex and/or mosek.
 
 5) Generate simulated toy data for 2-state HM-SVM model
 

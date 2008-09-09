@@ -11,12 +11,6 @@ b(1:neq) = [];
 % method is ignored
 % Mosek will always use interior point method
 
-setenv('MOSEKLM_LICENSE_FILE', ...
-       '/fml/ag-raetsch/home/fabio/mosek.lic');
-setenv('LD_LIBRARY_PATH', ...
-       '/fml/ag-raetsch/share/software/mosek/5/tools/platform/linux64x86/bin/');
-addpath /fml/ag-raetsch/share/software/mosek/5/toolbox/r2007a
-
 % TODO use the 'display' parameter to adjust the amount of output
 %r = mskqpopt(Q, f, A, [], b, lb, ub, [], sprintf('echo(%i)', display));
 

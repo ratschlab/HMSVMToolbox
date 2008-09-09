@@ -42,22 +42,32 @@ done
 
 
 # deploy source files from opt_interface subdirectory
-if [ ! -d "${rel_dr}/src/opt_interface" ]
+if [ ! -d "${rel_dr}/src/opt_interface/mosek" ]
 then
-  mkdir "${rel_dr}/src/opt_interface"
+  mkdir "${rel_dr}/src/opt_interface/mosek"
 fi
-cp "${base_dr}/opt_interface/README" "${rel_dr}/src/opt_interface/"
-cp "${base_dr}/opt_interface/compile_mex.sh" "${rel_dr}/src/opt_interface/"
-
-file_list=`ls ${base_dr}/opt_interface/*.m`
+cp "${base_dr}/opt_interface/mosek/README" "${rel_dr}/src/opt_interface/mosek/"
+file_list=`ls ${base_dr}/opt_interface/mosek/*.m`
 for fn in $file_list
 do
-  cp $fn "${rel_dr}/src/opt_interface/"
+  cp $fn "${rel_dr}/src/opt_interface/mosek"
 done
-file_list=`ls ${base_dr}/opt_interface/*.c`
+
+if [ ! -d "${rel_dr}/src/opt_interface/cplex" ]
+then
+  mkdir "${rel_dr}/src/opt_interface/cplex"
+fi
+cp "${base_dr}/opt_interface/cplex/README" "${rel_dr}/src/opt_interface/cplex/"
+cp "${base_dr}/opt_interface/cplex/compile_mex.sh" "${rel_dr}/src/opt_interface/cplex/"
+file_list=`ls ${base_dr}/opt_interface/cplex/*.m`
 for fn in $file_list
 do
-  cp $fn "${rel_dr}/src/opt_interface/"
+  cp $fn "${rel_dr}/src/opt_interface/cplex/"
+done
+file_list=`ls ${base_dr}/opt_interface/cplex/*.c`
+for fn in $file_list
+do
+  cp $fn "${rel_dr}/src/opt_interface/cplex/"
 done
 
 
