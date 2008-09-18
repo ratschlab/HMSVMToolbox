@@ -42,6 +42,10 @@ done
 
 
 # deploy source files from opt_interface subdirectory
+if [ ! -d "${rel_dr}/src/opt_interface" ]
+then
+  mkdir "${rel_dr}/src/opt_interface"
+fi
 if [ ! -d "${rel_dr}/src/opt_interface/mosek" ]
 then
   mkdir "${rel_dr}/src/opt_interface/mosek"

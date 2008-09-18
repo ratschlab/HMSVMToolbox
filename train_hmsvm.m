@@ -13,6 +13,13 @@ function progress = train_hmsvm(PAR)
 % adjust set_hmsvm_paths.m to point to the correct directories
 set_hmsvm_paths();
 
+% include user-specified include paths
+if isfield(PAR, 'include_paths'),
+  for i=1:length(PAR.include_paths),
+    addpath(PAR.include_paths{i});
+  end
+end
+
 % option to enable/disable some extra consistency checks
 if ~isfield(PAR, 'extra_checks'),
   PAR.extra_checks = 0;
@@ -35,7 +42,7 @@ if ~isfield(PAR, 'min_rel_obj_change'),
 end
 % ... or if the maximum number of iterations is exceeded
 if ~isfield(PAR, 'max_num_iter'),
-  PAR.max_num_iter = 100;
+  PAR.max_num_iter = 1000;
 end
 
 % margin constraints are only added if the example is predicted with an
@@ -73,7 +80,7 @@ end
 % path to the optimizer interface
 addpath(sprintf('opt_interface/%s', PAR.optimizer));
 
-% subsample validation examples to the indicated number
+% subsample examples for performance checks
 if ~isfield(PAR, 'max_num_vald_exms'),
   PAR.max_num_vald_exms = 100;
 end
@@ -106,19 +113,14 @@ disp(PAR.data_file);
 
 
 %%%%% load data and select training examples
-data = load(PAR.data_file, 'label', 'signal', 'exm_id');
-label       = data.label;
-signal      = data.signal;
-exm_id      = data.exm_id;
+load(PAR.data_file, 'label', 'signal', 'exm_id');
 state_label = nan(size(label));
-clear data
 PAR.num_features = size(signal,1);
 
 if isfield(PAR, 'train_exms'),
   % randomize order of potential training example before subselection
   train_exm_ids = PAR.train_exms;
   train_exm_ids = train_exm_ids(randperm(length(train_exm_ids)));
-  % subselect PAR.num_train_exm sequences for training
   train_exm_ids = train_exm_ids(1:PAR.num_train_exm);
   fprintf('\nusing %i sequences for training.\n', ...
           length(train_exm_ids));
@@ -144,13 +146,13 @@ else
   assert(~isfield(PAR, 'vald_exms'));
   assert(~isfield(PAR, 'test_exms'));
   
+  % randomize order of potential training example before subselection
   train_exm_ids = unique(exm_id);
   train_exm_ids = train_exm_ids(randperm(length(train_exm_ids)));
-  % subselect PAR.num_train_exm sequences for training
   train_exm_ids = train_exm_ids(1:PAR.num_train_exm);
   fprintf('\nusing %i sequences for training.\n', ...
           length(train_exm_ids));
-  % from the remainder take as many sequences for performance checks
+  % from the remainder take sequences for performance checks
   holdout_exm_ids = setdiff(unique(exm_id), train_exm_ids);
   holdout_exm_ids = holdout_exm_ids(randperm(length(holdout_exm_ids)));
   assert(isempty(intersect(train_exm_ids, holdout_exm_ids)));
@@ -218,7 +220,7 @@ t_start = clock();
 for iter=1:PAR.max_num_iter,
   new_constraints = zeros(1,PAR.num_train_exm);
   tic
-  for i=1:length(train_exm_ids),
+  for i=1:length(train_exm_ids)
     idx = find(exm_id==train_exm_ids(i));
     obs_seq = signal(:,idx);
     true_label_seq = label(idx);
@@ -257,14 +259,10 @@ for iter=1:PAR.max_num_iter,
     
     %%% add constraints for examples which have not been decoded correctly
     %%% and for which a margin violator has been found
-% standard HM-SVM constraint addition check
-%    if score_delta + slacks(i) < loss - PAR.epsilon && trn_acc(i)<PAR.max_accuracy,
-% practically working heuristic???
-    if norm(weight_delta)>0 && loss>PAR.min_loss && trn_acc(i)<PAR.max_accuracy
-    
+    if score_delta + slacks(i) < loss - PAR.epsilon && trn_acc(i)<PAR.max_accuracy,
       v = zeros(1,PAR.num_train_exm);
       v(i) = 1;
-      A = [A; -weight_delta zeros(1, PAR.num_aux) -v];
+      A = [A; -weight_delta, zeros(1, PAR.num_aux), -v];
       b = [b; -loss];
       new_constraints(i) = 1;      
     end
@@ -334,7 +332,7 @@ for iter=1:PAR.max_num_iter,
     trn_true_label_seq = label(trn_idx);
     trn_pred_label_seq = trn_pred_path.label_seq;
     trn_acc(j) = mean(trn_true_label_seq(1,:)==trn_pred_label_seq(1,:));
-
+    
     if PAR.verbose>=3 && j<=25,
       view_label_seqs(gcf, trn_obs_seq, trn_true_label_seq, trn_pred_label_seq);
       title(gca, ['Training example ' num2str(train_exm_ids(j))]);
@@ -379,7 +377,12 @@ for iter=1:PAR.max_num_iter,
   progress(iter).gen_constraints = new_constraints';
   progress(iter).objective = obj;
   progress(iter).el_time = etime(clock(), t_start);
-  
+  if PAR.verbose>=1,
+    plot_progress(progress, fh1);
+    print(fh1, '-depsc', [PAR.out_dir 'progress.eps']);
+    pause(1);
+  end    
+
   % save at every fifth iteration
   if mod(iter,5)==0,
     fprintf('Saving result...\n\n\n');
@@ -388,11 +391,6 @@ for iter=1:PAR.max_num_iter,
          'trn_acc', 'val_acc', 'A', 'b', 'Q', 'f', 'lb', 'ub', 'slacks', 'res', ...
          'train_exm_ids', 'holdout_exm_ids', 'progress');
   end
-  
-  if PAR.verbose>=1,
-    plot_progress(progress, fh1);
-    pause(1);
-  end    
   
   %%% save and terminate training if no more constraints are generated or
   %%% the change of the objective function over the last three iterations
@@ -404,7 +402,7 @@ for iter=1:PAR.max_num_iter,
     save([PAR.out_dir fname], 'PAR', 'state_model', 'score_plifs', 'transition_scores', ...
          'trn_acc', 'val_acc', 'A', 'b', 'Q', 'f', 'lb', 'ub', 'slacks', 'res', ...
          'train_exm_ids', 'holdout_exm_ids', 'progress');
-   
+
     if PAR.verbose>=2,
       eval(sprintf('%s(state_model, score_plifs, PAR, transition_scores);', ...
                    PAR.model_config.func_view_model));
