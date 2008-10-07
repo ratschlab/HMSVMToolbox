@@ -1,23 +1,18 @@
 How to install the HM-SVM toolbox?
 ----------------------------------
 
-1) Install Shogun
-
-  The machine learning toolbox is free software and can be downloaded
-  from http://www.shogun-toolbox.org/ . It is needed for Viterbi
-  decoding.
-
-2) Adjust matlab path to Shogun's matlab interface
-
-  Change line 14 in train_hmsvm.m so that it points to Shogun's matlab
-  interface.
-
-3) Create mex files
+1) Create mex files
 
   Run the mex compiler as follows:
-  mex compute_score_matrix.cpp score_plif_struct.cpp
 
-4) Adjust and compile solver interface
+  mex compute_score_matrix.cpp score_plif_struct.cpp
+  and
+  mex best_path.cpp
+
+  (Note that Shogun is no longer required for this version 
+  of the HM-SVM toolbox)
+
+2) Adjust and compile solver interface
 
   If you want to use the CPLEX otimizer, compile its interface
   (see README file in opt_interface/cplex/).
@@ -29,13 +24,13 @@ How to install the HM-SVM toolbox?
   For more details see the README files in the opt_interface 
   subdirectories cplex and/or mosek.
 
-5) Generate simulated toy data for 2-state HM-SVM model
+3) Generate simulated toy data for 2-state HM-SVM model
 
   Execute the matlab script simulate_data.m in the models/two_state/
   subdirectory. It writes the data to ~/hmsvm_toydata/hmsvm_data.mat
   (directory is created if non-existent).
 
-6) Train 2-state HM-SVM
+4) Train 2-state HM-SVM
   
   Call the matlab script setup_hmsvm_training.m which reads data from
   ~/hmsvm_toydata/hmsvm_data.mat and writes the trained HM-SVM (as
