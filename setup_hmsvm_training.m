@@ -78,7 +78,7 @@ for i=1:size(parameters,1),
 
   % assign example sequences to training, validation and test set
   assert(isfield(PAR, 'train_subsets'));
-  PAR.vald_subsets = max(PAR.train_subsets)+1;
+  PAR.vald_subsets = PAR.train_subsets(end)+1;
   if PAR.vald_subsets>num_xval_subsets,
     PAR.vald_subsets = mod(PAR.vald_subsets,num_xval_subsets);
   end

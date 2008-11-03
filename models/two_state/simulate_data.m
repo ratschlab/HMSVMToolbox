@@ -27,7 +27,7 @@ label = [];
 subset_id = [];
 for i=1:num_exm,
   exm_id = [exm_id i*ones(1,exm_len)];
-  pos_id = [exm_id 1000*i + (1:exm_len)];
+  pos_id = [pos_id 1000*i + (1:exm_len)];
   % generate label sequence randomly
   % containing num_blocks(1) to num_blocks(2) blocks of positive labels
   % each of length between block_len(1) and block_len(2)
@@ -67,3 +67,4 @@ end
 data_file = [data_dir 'hmsvm_data.mat'];
 save(data_file, 'label', 'signal', 'pos_id', 'exm_id', 'subset_id');
 
+keyboard

@@ -36,7 +36,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     return;
   }
   
-  //  fprintf(stderr, "reading input arguments...\n");
+//  fprintf(stderr, "reading input arguments...\n");
   
   // read input arguments
   int arg = 0;
@@ -69,7 +69,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   scr = mxGetPr(prhs[arg]);
   ++arg;
 
-  //  fprintf(stderr, "finished reading input data\n");
+//  fprintf(stderr, "finished reading input data\n");
 
   const int LEN = N_scr;                    // length of the given example
   const int NUM_STATES = M_scr;             // number of states
@@ -79,11 +79,15 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   assert(N_A == NUM_STATES);
 
   // start dynamic programming
-  double INF = INFINITY;
-  double dpm[LEN][NUM_STATES];   // d.p. matrix
-  int trb[LEN][NUM_STATES];      // traceback matrix
 //  printf("NUM_STATES=%i, LEN=%i\n", NUM_STATES, LEN);
-    
+  double INF = INFINITY;
+  double **dpm = new double*[LEN];   // d.p. matrix
+  int **trb = new int*[LEN];         // traceback matrix
+  for (int i = 0; i<LEN; ++i) {
+    dpm[i] = new double[NUM_STATES];
+    trb[i] = new int[NUM_STATES];
+  }
+
   for (int s=0; s<NUM_STATES; ++s) {
     if (p[s] > -INF) {
       // dpm[0][s] = scr[s][0];
@@ -100,7 +104,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
       dpm[p][t] = -INF;
       // precomputed emission score e = scr[t][p]
       double e = scr[p*NUM_STATES+t];
-//	printf("e(%i,%i)=%f\n", t, p, e);
+//      printf("e(%i,%i)=%f\n", t, p, e);
       // find maximally scoring prefix
       for (int s=0; s<NUM_STATES; ++s) {
 	// transition score A[s][t]
@@ -136,7 +140,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   assert(q[opt_path[LEN-1]] > -INF);
 
   // prepare return values
-  // fprintf(stderr, "writing return values...\n");
+//   fprintf(stderr, "writing return values...\n");
 
   plhs[0] = mxCreateDoubleMatrix(1, 1, mxREAL);
   double *ret0 = mxGetPr(plhs[0]);
@@ -151,4 +155,12 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     conv_path[p] = ((double) opt_path[p]) + 1.0;
   }
   memcpy(ret1, conv_path, mxGetM(plhs[1])*mxGetN(plhs[1])*mxGetElementSize(plhs[1]));
+
+  // clean-up
+  for (int i = 0; i<LEN; ++i) {
+    delete[] dpm[i];
+    delete[] trb[i];
+  }
+  delete[] dpm;
+  delete[] trb;
 }

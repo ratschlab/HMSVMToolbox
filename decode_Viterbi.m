@@ -50,7 +50,6 @@ q = -inf(1, num_states);
 q(find([state_model.is_stop]))  = 0;
 
 [pred_path.score, pred_state_seq] = best_path(p, q, A, score_matrix);
-
 pred_path.state_seq = pred_state_seq;
 pred_path.label_seq = eval(sprintf('%s(pred_state_seq, state_model);', ...
                                    PAR.model_config.func_states_to_labels));
