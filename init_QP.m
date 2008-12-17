@@ -104,9 +104,15 @@ assert(num_aux == num_aux_smooth+num_aux_coupling);
 slacks = zeros(PAR.num_train_exm,1);
 res = [res; slacks];
  
-% quadratic regularizer to keep PLiF values small
+% quadratic regularizer to keep transition scores and PLiF values small
 Q = sparse(zeros(length(res)));
-Q(1:num_param,1:num_param) = PAR.C_small*eye(num_param);
+if isfield(PAR, 'C_trans'),
+  Q(1:num_transition,1:num_transition) = PAR.C_trans*eye(num_transition);
+else
+  Q(1:num_transition,1:num_transition) = PAR.C_small*eye(num_transition);  
+end
+Q(num_transition+1:num_param,num_transition+1:num_param) ....
+    = PAR.C_small*eye(num_param-num_transition);
 % quadratic regularizer to keep PLiFs smooth
 Q(num_param+1:num_param+num_aux_smooth,num_param+1:num_param+num_aux_smooth) ...
     = PAR.C_smooth*eye(num_aux_smooth);

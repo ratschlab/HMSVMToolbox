@@ -75,7 +75,7 @@ end
 % optimization software used to solve the (intermediate) training
 % problem(s). Currently there are two possibilities: 'cplex' or 'mosek'
 if ~isfield(PAR, 'optimizer'),
-  PAR.optimizer = 'mosek';
+  PAR.optimizer = 'cplex'%'mosek';
 end
 % path to the optimizer interface
 addpath(sprintf('opt_interface/%s', PAR.optimizer));
@@ -396,7 +396,7 @@ for iter=1:PAR.max_num_iter,
   %%% the change of the objective function over the last three iterations
   %%% was unsubstantial
   if all(new_constraints==0) ...
-        || (iter>3 && obj-progress(iter-3).objective < obj* PAR.min_rel_obj_change),
+        || (iter>3 && obj-progress(iter-3).objective < obj*PAR.min_rel_obj_change),
     fprintf('Saving result...\n\n\n');
     fname = sprintf('lsl_final');
     save([PAR.out_dir fname], 'PAR', 'state_model', 'score_plifs', 'transition_scores', ...

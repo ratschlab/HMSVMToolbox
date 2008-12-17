@@ -18,13 +18,16 @@ else
 end
 
 hold on
-r_obj = [progress.objective] ./ max([progress.objective]);
-plot(r_obj, '.--k');
+lg = {};
+if isfield(progress, 'objective'),
+  r_obj = [progress.objective] ./ max([progress.objective]);
+  plot(r_obj, '.--k');
+  lg{end+1} = 'rel. objective value';
+end
 
 tr_acc = mean([progress.trn_acc]);
 plot(tr_acc, '.-b');
-
-lg = {'rel. objective value', 'training accuracy'};
+lg{end+1} = 'training accuracy';
 
 if isfield(progress, 'val_acc'),
   v_acc = mean([progress.val_acc]);
@@ -32,19 +35,25 @@ if isfield(progress, 'val_acc'),
   lg{end+1} = 'validation accuracy';
 end
 
-plot(length(progress), r_obj(end), 'dk');
+xlabel('iteration');
+if isfield(progress, 'objective'),
+  plot(length(progress), r_obj(end), 'dk');
+  ylabel('accuracy / relative objective');
+else
+  ylabel('accuracy');
+end
 plot(length(progress), tr_acc(end), 'db');
 if isfield(progress, 'val_acc'),
   plot(length(progress), v_acc(end), 'dr');
 end
 
-xlabel('iteration');
-ylabel('accuracy / relative objective');
 legend(lg, 'Location', 'NorthWest');
 grid on
 axis([0 length(progress)+1 0 1]);
-for i=5:5:length(progress),
-  text(i, 0.05, sprintf('%.0f min', progress(i).el_time/60));
+if isfield(progress, 'el_time'),
+  for i=5:5:length(progress),
+    text(i, 0.05, sprintf('%.0f min', progress(i).el_time/60));
+  end
 end
 
 % eof

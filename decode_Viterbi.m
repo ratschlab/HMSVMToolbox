@@ -33,8 +33,8 @@ function [pred_path true_path pred_path_mmv] = decode_Viterbi(obs_seq, transitio
 %
 % written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany, 2008
 
-[state_model, A, a_trans] = eval(sprintf('%s(PAR, transition_scores);', ...
-                                         PAR.model_config.func_make_model));
+[state_model, A] = eval(sprintf('%s(PAR, transition_scores);', ...
+                                PAR.model_config.func_make_model));
 
 %%%%% Viterbi decoding to obtain best prediction WITHOUT loss
 
@@ -53,6 +53,9 @@ q(find([state_model.is_stop]))  = 0;
 pred_path.state_seq = pred_state_seq;
 pred_path.label_seq = eval(sprintf('%s(pred_state_seq, state_model);', ...
                                    PAR.model_config.func_states_to_labels));
+if PAR.extra_checks,
+  assert(abs(pred_path.score - path_score(pred_state_seq, score_matrix, A)) < PAR.epsilon);
+end
 
 %%%% if true_label_seq is given (for training examples),
 %%%% true_state_seq has to be specified as well.
@@ -65,12 +68,13 @@ if exist('true_label_seq', 'var'),
   assert(length(true_label_seq)==size(obs_seq,2));
   assert(all(size(true_state_seq)==size(true_label_seq)));
   
-  %%%%% transition and plif weights for the true path 
+  %%%%% score, transition and plif weights for the true path 
+  true_path.score = path_score(true_state_seq, score_matrix, A);
   true_path.state_seq = true_state_seq;
   true_path.label_seq = true_label_seq;
   [true_path.transition_weights, true_path.plif_weights] ...
       = path_weights(true_path.state_seq, obs_seq, score_plifs, state_model);
-
+  
   % position-wise loss of the decoded state sequence
   loss = eval(sprintf('%s(true_path.state_seq, state_model, PAR);', ...
                       PAR.model_config.func_calc_loss_matrix));
