@@ -13,6 +13,8 @@ function progress = train_hmsvm(PAR)
 % adjust set_hmsvm_paths.m to point to the correct directories
 set_hmsvm_paths();
 
+%profile on
+
 % include user-specified include paths
 if isfield(PAR, 'include_paths'),
   for i=1:length(PAR.include_paths),
@@ -27,11 +29,15 @@ end
 
 % option to control the amount of output
 if ~isfield(PAR, 'verbose'),
-  PAR.verbose = 2;
+  PAR.verbose = 1;
 end
-
 if PAR.verbose>=1,
   fh1 = figure;
+end
+
+% option to enable/disable performance checks during training
+if ~isfield(PAR, 'check_acc'),
+  PAR.check_acc = 1;
 end
 
 % stopping criterion: constraint generation is terminated if no more
@@ -75,15 +81,21 @@ end
 % optimization software used to solve the (intermediate) training
 % problem(s). Currently there are two possibilities: 'cplex' or 'mosek'
 if ~isfield(PAR, 'optimizer'),
-  PAR.optimizer = 'cplex'%'mosek';
+  PAR.optimizer = 'cplex' % one of 'cplex' or 'mosek'
+  % path to the optimizer interface
+  addpath(sprintf('opt_interface/%s', PAR.optimizer));
 end
-% path to the optimizer interface
-addpath(sprintf('opt_interface/%s', PAR.optimizer));
 
 % subsample examples for performance checks
 if ~isfield(PAR, 'max_num_vald_exms'),
   PAR.max_num_vald_exms = 100;
 end
+
+% by default, do not submit any cluster jobs from within HM-SVM training
+if ~isfield(PAR, 'submit_jobs'),
+  PAR.submit_jobs = 0;
+end
+
 
 % seed for random number generation
 rand('seed', 11081979);
@@ -114,6 +126,18 @@ disp(PAR.data_file);
 
 %%%%% load data and select training examples
 load(PAR.data_file, 'label', 'signal', 'exm_id');
+if ~exist('exm_id', 'var'),
+ load(PAR.data_file, 'exm_id_intervals');
+ assert(exist('exm_id_intervals', 'var') ~= 0);
+else
+  unq_exm_id = unique(exm_id);
+  exm_id_intervals = zeros(unq_exm_id,3);
+  for i=1:length(unq_exm_id),
+    idx = find(exm_id==unq_exm_id(i));
+    exm_id_intervals(i,:) = [unq_exm_id(i), idx(1), idx(end)];
+  end
+  clear exm_id
+end
 state_label = nan(size(label));
 PAR.num_features = size(signal,1);
 
@@ -127,18 +151,10 @@ if isfield(PAR, 'train_exms'),
   % for performance checks use sequences from validation set if given
   if isfield(PAR, 'vald_exms'),
     holdout_exm_ids = PAR.vald_exms;
-    % choose random subset for validation if there are too many
-    % validation examples
-    if length(holdout_exm_ids) > PAR.max_num_vald_exms,
-      holdout_exm_ids = holdout_exm_ids(randperm(length(holdout_exm_ids)));
-      holdout_exm_ids = holdout_exm_ids(1:PAR.max_num_vald_exms);
-    end
-    assert(isempty(intersect(train_exm_ids, holdout_exm_ids)));
-    fprintf('using %i sequences for performance estimation.\n\n', ...
-            length(holdout_exm_ids));
   else
     holdout_exm_ids = [];
     fprintf('skipping performance estimation.\n\n');
+    keyboard
   end
 else
   % if training examples are not specified use all loaded sequences
@@ -147,23 +163,31 @@ else
   assert(~isfield(PAR, 'test_exms'));
   
   % randomize order of potential training example before subselection
-  train_exm_ids = unique(exm_id);
+  unq_exm_ids = unique(exm_id_intervals(:,1)');
+  train_exm_ids = unq_exm_ids;
   train_exm_ids = train_exm_ids(randperm(length(train_exm_ids)));
   train_exm_ids = train_exm_ids(1:PAR.num_train_exm);
   fprintf('\nusing %i sequences for training.\n', ...
           length(train_exm_ids));
   % from the remainder take sequences for performance checks
-  holdout_exm_ids = setdiff(unique(exm_id), train_exm_ids);
+  holdout_exm_ids = setdiff(unq_exm_ids, train_exm_ids);
   holdout_exm_ids = holdout_exm_ids(randperm(length(holdout_exm_ids)));
   assert(isempty(intersect(train_exm_ids, holdout_exm_ids)));
   fprintf('using %i sequences for performance estimation.\n\n', ...
           length(holdout_exm_ids));
 end
+% choose random subset for validation if there are too many
+% validation examples
+if length(holdout_exm_ids) > PAR.max_num_vald_exms,
+  holdout_exm_ids = holdout_exm_ids(randperm(length(holdout_exm_ids)));
+  holdout_exm_ids = holdout_exm_ids(1:PAR.max_num_vald_exms);
+end
+assert(isempty(intersect(train_exm_ids, holdout_exm_ids)));
+fprintf('using %i sequences for performance estimation.\n\n', ...
+        length(holdout_exm_ids));
 
 
 %%%%% assemble model and score function structs,
-LABELS = eval(sprintf('%s;', ...
-                      PAR.model_config.func_get_label_set));
 state_model = eval(sprintf('%s(PAR);', ...
                            PAR.model_config.func_make_model));
 
@@ -175,7 +199,9 @@ assert(~any(isnan(transition_scores)));
 
 %%%%% determine the true state sequence for each example from its label sequence
 for i=1:length(train_exm_ids),
-  idx = find(exm_id==train_exm_ids(i));
+  idx = find(exm_id_intervals(:,1)==train_exm_ids(i));
+  assert(~isempty(idx));
+  idx = exm_id_intervals(idx,2):exm_id_intervals(idx,3);
   true_label_seq = label(idx);
   obs_seq = signal(:,idx);
   true_state_seq = eval(sprintf('%s(true_label_seq, state_model, obs_seq, PAR);', ...
@@ -199,7 +225,7 @@ switch PAR.reg_type,
   assert(isequal(how, 'OK'));
   Q = []; % just to keep code as general as possible
  otherwise,
-  error(sprintf('unknown reg_type: %s', PAR.reg_type));
+  error('Unknown reg_type: %s', PAR.reg_type);
 end
 assert(length(res) == PAR.num_opt_var);
 assert(all(size(res_map) == size(score_plifs)));
@@ -210,8 +236,6 @@ assert(all(size(res_map) == size(score_plifs)));
 progress = [];
 % accuracy on training examples
 trn_acc = zeros(1,length(train_exm_ids));
-% accuracy on holdout validation examples
-val_acc = zeros(1,length(holdout_exm_ids));
 % previous value of the objective function
 last_obj = 0;
 % record elapsed time
@@ -219,9 +243,10 @@ t_start = clock();
 
 for iter=1:PAR.max_num_iter,
   new_constraints = zeros(1,PAR.num_train_exm);
-  tic
+  t_start_cg = clock();
   for i=1:length(train_exm_ids)
-    idx = find(exm_id==train_exm_ids(i));
+    idx = find(exm_id_intervals(:,1)==train_exm_ids(i));
+    idx = exm_id_intervals(idx,2):exm_id_intervals(idx,3);
     obs_seq = signal(:,idx);
     true_label_seq = label(idx);
     true_state_seq = state_label(idx);
@@ -273,13 +298,16 @@ for iter=1:PAR.max_num_iter,
       fprintf('  loss = %6.2f  diff = %8.2f  slack = %6.2f\n', ...
               loss, score_delta, slacks(i));
       if new_constraints(i),
-        fprintf('  generated new constraint\n', train_exm_ids(i));      
+        fprintf('  generated new constraint\n');      
       end
     end
   end
   fprintf('Generated %i new constraints\n\n', sum(new_constraints));
-  fprintf('Constraint generation took %3.2f sec\n\n', toc);
-
+  t_stop_cg = clock();
+  fprintf('Constraint generation took %3.2f sec\n\n', etime(t_stop_cg, t_start_cg));
+ 
+  fprintf('Mean training accuracy (prior to solving): %2.1f%%\n', mean(trn_acc));
+ 
   %%% solve intermediate optimization problem
   tic
   c_diff = b - A*res;
@@ -292,18 +320,18 @@ for iter=1:PAR.max_num_iter,
     [res, lambda, how] ...
         = qp_solve(opt_env, Q, f, sparse(A(part_idx,:)), b(part_idx), lb, ub, 0, 1, 'bar');
     if ~isequal(how, 'OK'),
-      error(sprintf('Optimizer problem: %s', how));
+      error('Optimizer problem: %s',how);
     end
     obj = 0.5*res'*Q*res + f'*res;
    case 'LP',
     [res, lambda, how] ...
         = lp_solve(opt_env, f, sparse(A(part_idx,:)), b(part_idx), lb, ub, 0, 1, 'bar');
     if ~isequal(how, 'OK'),
-      error(sprintf('Optimizer problem: %s', how));
+      error('Optimizer problem: %s', how);
     end
     obj = f'*res;
    otherwise,
-    error(sprintf('unknown reg_type: %s', PAR.reg_type));
+    error('Unknown reg_type: %s', PAR.reg_type);
   end
   fprintf('\nSolving the optimization problem took %3.2f sec\n', toc);
   assert(length(res) == PAR.num_param+PAR.num_aux+PAR.num_train_exm);
@@ -311,7 +339,7 @@ for iter=1:PAR.max_num_iter,
   diff = obj - last_obj;
   % error if objective is not monotonically increasing
   if diff < -PAR.epsilon,
-    error(sprintf('decrease in objective function %f by %f', obj, diff));
+    error('Decrease in objective function %f by %f', obj, diff);
   end
   last_obj = obj;
   fprintf('  objective = %1.6f (diff = %1.6f), sum_slack = %1.6f\n', ...
@@ -324,49 +352,37 @@ for iter=1:PAR.max_num_iter,
   [transition_scores, score_plifs] = res_to_scores(res, state_model, res_map, ...
                                                    score_plifs, PAR);
   
+  progress(iter).gen_constraints = new_constraints';
+  progress(iter).objective = obj;
+  progress(iter).el_time = etime(clock(), t_start);
+
   %%% check prediction accuracy on training examples
-  for j=1:length(train_exm_ids),
-    trn_idx = find(exm_id==train_exm_ids(j));
-    trn_obs_seq = signal(:,trn_idx);
-    trn_pred_path = decode_Viterbi(trn_obs_seq, transition_scores, score_plifs, PAR);
-    trn_true_label_seq = label(trn_idx);
-    trn_pred_label_seq = trn_pred_path.label_seq;
-    trn_acc(j) = mean(trn_true_label_seq(1,:)==trn_pred_label_seq(1,:));
-    
-    if PAR.verbose>=3 && j<=25,
-      view_label_seqs(gcf, trn_obs_seq, trn_true_label_seq, trn_pred_label_seq);
-      title(gca, ['Training example ' num2str(train_exm_ids(j))]);
-      fprintf('Training example %i\n', train_exm_ids(j));
-      fprintf('  Example accuracy: %3.2f%%\n', 100*trn_acc(j));
-      pause
+  if PAR.check_acc,
+    ARGS.PAR = PAR;
+    ARGS.train_exm_ids = train_exm_ids;
+    ARGS.holdout_exm_ids = holdout_exm_ids;
+    ARGS.exm_id_intervals = exm_id_intervals;
+    ARGS.signal = signal;
+    ARGS.label = label;
+    ARGS.transition_scores = transition_scores;
+    ARGS.score_plifs = score_plifs;
+    ARGS.progress = progress;
+    ARGS.iter = iter;
+    if PAR.verbose>=1,
+      ARGS.fh1 = fh1;
     end
-  end
-  fprintf(['\nIteration %i:\n' ...
-           '  LSL training accuracy:              %2.2f%%\n'], ...
-          iter, 100*mean(trn_acc));
-  progress(iter).trn_acc = trn_acc';
-  
-  %%% check prediction accuracy on holdout examples
-  if ~isempty(holdout_exm_ids),
-    for j=1:length(holdout_exm_ids),
-      val_idx = find(exm_id==holdout_exm_ids(j));
-      val_obs_seq = signal(:,val_idx);
-      val_pred_path = decode_Viterbi(val_obs_seq, transition_scores, score_plifs, PAR);
-      val_true_label_seq = label(val_idx);
-      val_pred_label_seq = val_pred_path.label_seq;
-      val_acc(j) = mean(val_true_label_seq(1,:)==val_pred_label_seq(1,:));
-      
-      if PAR.verbose>=3 && j<=25,
-        view_label_seqs(gcf, val_obs_seq, val_true_label_seq, val_pred_label_seq);
-        title(gca, ['Hold-out example ' num2str(holdout_exm_ids(j))]);
-        fprintf('Hold-out example %i\n', holdout_exm_ids(j));
-        fprintf('  Example accuracy: %3.2f%%\n', 100*val_acc(j));
-        pause
-      end
+    if PAR.submit_jobs > 0,
+      rproc_par.priority   = 17;
+      rproc_par.identifier = sprintf('mSTADspseq_acc_');
+      rproc_par.verbosity  = 0;
+      rproc_par.start_dir  = PAR.include_paths{1};
+      rproc_memreq         = 2200;
+      rproc_time           = length(train_exm_ids) + length(holdout_exm_ids);
+      rproc('check_accuracy', ARGS, rproc_memreq, rproc_par, rproc_time);
+     fprintf('Submitted job for performance checking\n\n');
+   else
+      check_accuracy(ARGS);
     end
-    fprintf(['  LSL validation accuracy:            %2.2f%%\n\n'], ...
-            100*mean(val_acc));
-    progress(iter).val_acc = val_acc';
   end
   
   if PAR.verbose>=3,
@@ -374,22 +390,13 @@ for iter=1:PAR.max_num_iter,
                  PAR.model_config.func_view_model));
   end  
 
-  progress(iter).gen_constraints = new_constraints';
-  progress(iter).objective = obj;
-  progress(iter).el_time = etime(clock(), t_start);
-  if PAR.verbose>=1,
-    plot_progress(progress, fh1);
-    print(fh1, '-depsc', [PAR.out_dir 'progress.eps']);
-    pause(1);
-  end    
-
   % save at every fifth iteration
   if mod(iter,5)==0,
-    fprintf('Saving result...\n\n\n');
+    fprintf('Saving intermediate result...\n\n\n');
     fname = sprintf('lsl_iter%i', iter);
     save([PAR.out_dir fname], 'PAR', 'state_model', 'score_plifs', 'transition_scores', ...
-         'trn_acc', 'val_acc', 'A', 'b', 'Q', 'f', 'lb', 'ub', 'slacks', 'res', ...
-         'train_exm_ids', 'holdout_exm_ids', 'progress');
+         'trn_acc', 'A', 'b', 'Q', 'f', 'lb', 'ub', 'slacks', 'res', ...
+         'train_exm_ids', 'holdout_exm_ids');
   end
   
   %%% save and terminate training if no more constraints are generated or
@@ -397,11 +404,11 @@ for iter=1:PAR.max_num_iter,
   %%% was unsubstantial
   if all(new_constraints==0) ...
         || (iter>3 && obj-progress(iter-3).objective < obj*PAR.min_rel_obj_change),
-    fprintf('Saving result...\n\n\n');
+    fprintf('Saving final result...\n\n\n');
     fname = sprintf('lsl_final');
     save([PAR.out_dir fname], 'PAR', 'state_model', 'score_plifs', 'transition_scores', ...
-         'trn_acc', 'val_acc', 'A', 'b', 'Q', 'f', 'lb', 'ub', 'slacks', 'res', ...
-         'train_exm_ids', 'holdout_exm_ids', 'progress');
+         'trn_acc', 'A', 'b', 'Q', 'f', 'lb', 'ub', 'slacks', 'res', ...
+         'train_exm_ids', 'holdout_exm_ids');
 
     if PAR.verbose>=2,
       eval(sprintf('%s(state_model, score_plifs, PAR, transition_scores);', ...
@@ -411,10 +418,11 @@ for iter=1:PAR.max_num_iter,
       pause(1)
     end
 
-    % terminate
+    % terminate optimizer and return
     opt_close(opt_env);
     return
   end
+%  profview
 end
 
 % eof

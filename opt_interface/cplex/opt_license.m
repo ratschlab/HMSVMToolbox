@@ -5,7 +5,7 @@ function opt_env = opt_license(waitflag, license_no)
 % Gets a CPLEX license and returns an environmental pointer to this
 % solver instance.
 %
-% waitflag -- optional parameter (default: 0), if one getting a license
+% waitflag -- optional parameter (default: 0), if 1, getting a license
 %   will be retried every 60 sec at inifinitum or until successful
 % license_no -- optional parameter to specify a certain license manager
 %   if there are several

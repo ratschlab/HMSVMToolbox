@@ -54,7 +54,9 @@ pred_path.state_seq = pred_state_seq;
 pred_path.label_seq = eval(sprintf('%s(pred_state_seq, state_model);', ...
                                    PAR.model_config.func_states_to_labels));
 if PAR.extra_checks,
-  assert(abs(pred_path.score - path_score(pred_state_seq, score_matrix, A)) < PAR.epsilon);
+  scale = max(0, round(log10(pred_path.score)));
+  assert(abs(pred_path.score - path_score(pred_state_seq, score_matrix, A)) ...
+         < 10^scale * PAR.epsilon);
 end
 
 %%%% if true_label_seq is given (for training examples),
@@ -72,9 +74,16 @@ if exist('true_label_seq', 'var'),
   true_path.score = path_score(true_state_seq, score_matrix, A);
   true_path.state_seq = true_state_seq;
   true_path.label_seq = true_label_seq;
+
   [true_path.transition_weights, true_path.plif_weights] ...
-      = path_weights(true_path.state_seq, obs_seq, score_plifs, state_model);
-  
+      = path_weights(true_path.state_seq, obs_seq, score_plifs, length(state_model));
+
+%  keyboard
+%  [tw_ pw_] = path_weights_old(true_path.state_seq, obs_seq, score_plifs, state_model);
+%  [tw pw] = path_weights(true_path.state_seq, obs_seq, score_plifs, length(state_model));
+%  assert(isequal(tw, tw_));
+%  assert(isequal(pw, pw_));
+ 
   % position-wise loss of the decoded state sequence
   loss = eval(sprintf('%s(true_path.state_seq, state_model, PAR);', ...
                       PAR.model_config.func_calc_loss_matrix));
@@ -84,8 +93,14 @@ if exist('true_label_seq', 'var'),
   end
   pred_path.loss = pred_loss;
   [pred_path.transition_weights, pred_path.plif_weights] ...
-      = path_weights(pred_state_seq, obs_seq, score_plifs, state_model);
+      = path_weights(pred_state_seq, obs_seq, score_plifs, length(state_model));
   
+%  keyboard
+%  [tw_ pw_] = path_weights_old(pred_state_seq, obs_seq, score_plifs, state_model);
+%  [tw pw] = path_weights(pred_state_seq, obs_seq, score_plifs, length(state_model));
+%  assert(isequal(tw, tw_));
+%  assert(isequal(pw, pw_));
+
   %%%%% Viterbi decoding to obtain best prediction WITH loss, 
   %%%%% i.e. the maximal margin violater (MMV)
   
@@ -107,5 +122,11 @@ if exist('true_label_seq', 'var'),
   pred_path_mmv.score = pred_path_mmv.score - sum(pred_loss);
   
   [pred_path_mmv.transition_weights, pred_path_mmv.plif_weights] ...
-      = path_weights(pred_state_seq, obs_seq, score_plifs, state_model);
+      = path_weights(pred_state_seq, obs_seq, score_plifs, length(state_model));
+  
+%  keyboard
+%  [tw_ pw_] = path_weights_old(pred_state_seq, obs_seq, score_plifs, state_model);
+%  [tw pw] = path_weights(pred_state_seq, obs_seq, score_plifs, length(state_model));
+%  assert(isequal(tw, tw_));
+%  assert(isequal(pw, pw_));
 end

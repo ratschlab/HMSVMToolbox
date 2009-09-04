@@ -1,4 +1,4 @@
-function [transition_weights, plif_weights] = path_weights(state_seq, obs_seq, score_plifs, state_model)
+function [transition_weights, plif_weights] = path_weights_old(state_seq, obs_seq, score_plifs, state_model)
 
 % [transition_weights, plif_weights] ...
 %   = path_weights(state_seq, obs_seq, score_plifs, state_model)
@@ -15,7 +15,7 @@ function [transition_weights, plif_weights] = path_weights(state_seq, obs_seq, s
 % returns weights of transitions, i.e. counts of how often
 %   a certain transition has been used for decoding (transition_weights)
 %   and weights of supporting points of the feature scoring functions
-%   indicating how often certain scores are used (pfil_weights)
+%   indicating how often certain scores are used (plif_weights)
 %
 % written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany, 2008
 
@@ -29,8 +29,11 @@ num_plif_nodes = length(score_plifs(1,1).scores);
 plif_weights = zeros(size(obs_seq,1), length(state_model), num_plif_nodes);
 for f=1:size(obs_seq,1), % for all features
   for i=1:size(obs_seq,2), % for all observation positions
-    plif_weights(f,state_seq(i),:) = add_frac_vec(plif_weights(f,state_seq(i),:), ...
-                                                  obs_seq(f,i), ...
-                                                  score_plifs(f,state_seq(i)).limits);
+    v = plif_weights(f,state_seq(i),:);
+    v = add_frac_vec(v, obs_seq(f,i), score_plifs(f,state_seq(i)).limits);
+    plif_weights(f,state_seq(i),:) = v;
   end
 end
+
+% eof
+

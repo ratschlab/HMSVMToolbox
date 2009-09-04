@@ -69,23 +69,34 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   scr = mxGetPr(prhs[arg]);
   ++arg;
 
-//  fprintf(stderr, "finished reading input data\n");
-
-  const int LEN = N_scr;                    // length of the given example
-  const int NUM_STATES = M_scr;             // number of states
+  const int LEN = N_scr;        // length of the given example
+  const int NUM_STATES = M_scr; // number of states
   assert(M_p == NUM_STATES);
   assert(M_q == NUM_STATES);
   assert(M_A == NUM_STATES);
   assert(N_A == NUM_STATES);
 
   // start dynamic programming
+//  printf("filling dynamic programmming matrix...\n");
 //  printf("NUM_STATES=%i, LEN=%i\n", NUM_STATES, LEN);
   double INF = INFINITY;
   double **dpm = new double*[LEN];   // d.p. matrix
+  if (dpm==NULL) {
+    mexErrMsgTxt("memory allocation failed");
+  }
   int **trb = new int*[LEN];         // traceback matrix
+  if (trb==NULL) {
+    mexErrMsgTxt("memory allocation failed");
+  }
   for (int i = 0; i<LEN; ++i) {
     dpm[i] = new double[NUM_STATES];
+    if (dpm[i]==NULL) {
+      mexErrMsgTxt("memory allocation failed");
+    }
     trb[i] = new int[NUM_STATES];
+    if (trb[i]==NULL) {
+      mexErrMsgTxt("memory allocation failed");
+    }
   }
 
   for (int s=0; s<NUM_STATES; ++s) {
@@ -102,37 +113,54 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   for (int p=1; p<LEN; ++p) {
     for (int t=0; t<NUM_STATES; ++t) {
       dpm[p][t] = -INF;
+      trb[p][t] = -1;
       // precomputed emission score e = scr[t][p]
       double e = scr[p*NUM_STATES+t];
 //      printf("e(%i,%i)=%f\n", t, p, e);
       // find maximally scoring prefix
+      int trans_possible = -1;
       for (int s=0; s<NUM_STATES; ++s) {
 	// transition score A[s][t]
 	double a = A[t*NUM_STATES+s];
 	if (a > -INF) {
 	  // tmp_score = e + A[s][t] + dpm[p-1][s];
 	  double tmp_score = e + a + dpm[p-1][s];
+	  trans_possible = 1;
 	  if (tmp_score > dpm[p][t]) { 
 	    dpm[p][t] = tmp_score;
 	    trb[p][t] = s;
 	  }
 	}
       }
+      if (trans_possible == -1) {
+	mexErrMsgTxt("invalid transition scores");
+      }
 //      printf("p=%i, t=%i, dpm[p][t]=%f\n", p, t, dpm[p][t]);
     }
   }
   
-  int opt_path[LEN];
+  // traceback
+//  fprintf(stderr, "tracing back best path...\n");
+  int *opt_path = new int[LEN];
   double opt_score = -INF;
+  opt_path[LEN-1] = -1;
   for (int s=0; s<NUM_STATES; ++s) {
     if (q[s] > -INF && dpm[LEN-1][s] > opt_score) {
       opt_score = dpm[LEN-1][s];
       opt_path[LEN-1] = s;
     }
   }
+  if (opt_path[LEN-1] == -1) {
+    for (int s=0; s<NUM_STATES; ++s) {
+      printf("s=%i, dpm[LEN-1][s]=%f\n", s, dpm[LEN-1][s]);
+    }
+    mexErrMsgTxt("Error: no entry point for trace-back!");      
+  }
 
-  // traceback
   for (int p=LEN-1; p>0; --p) {
+    if (trb[p][opt_path[p]] == -INF) {
+	mexErrMsgTxt("Error: stuck in trace-back!");      
+    }
     opt_path[p-1] = trb[p][opt_path[p]];
   }
 
@@ -140,7 +168,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   assert(q[opt_path[LEN-1]] > -INF);
 
   // prepare return values
-//   fprintf(stderr, "writing return values...\n");
+//  fprintf(stderr, "writing return values...\n");
 
   plhs[0] = mxCreateDoubleMatrix(1, 1, mxREAL);
   double *ret0 = mxGetPr(plhs[0]);
@@ -163,4 +191,5 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   }
   delete[] dpm;
   delete[] trb;
+  delete[] opt_path;
 }
