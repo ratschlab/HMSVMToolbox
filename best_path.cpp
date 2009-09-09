@@ -81,22 +81,21 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 //  printf("NUM_STATES=%i, LEN=%i\n", NUM_STATES, LEN);
   double INF = INFINITY;
   double **dpm = new double*[LEN];   // d.p. matrix
-  if (dpm==NULL) {
+  if (dpm==NULL)
     mexErrMsgTxt("memory allocation failed");
-  }
+
   int **trb = new int*[LEN];         // traceback matrix
-  if (trb==NULL) {
+  if (trb==NULL)
     mexErrMsgTxt("memory allocation failed");
-  }
+  
   for (int i = 0; i<LEN; ++i) {
     dpm[i] = new double[NUM_STATES];
-    if (dpm[i]==NULL) {
+    if (dpm[i]==NULL)
       mexErrMsgTxt("memory allocation failed");
-    }
+
     trb[i] = new int[NUM_STATES];
-    if (trb[i]==NULL) {
+    if (trb[i]==NULL)
       mexErrMsgTxt("memory allocation failed");
-    }
   }
 
   for (int s=0; s<NUM_STATES; ++s) {
@@ -142,6 +141,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   // traceback
 //  fprintf(stderr, "tracing back best path...\n");
   int *opt_path = new int[LEN];
+  if (opt_path==NULL)
+    mexErrMsgTxt("memory allocation failed");
   double opt_score = -INF;
   opt_path[LEN-1] = -1;
   for (int s=0; s<NUM_STATES; ++s) {
@@ -171,18 +172,20 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 //  fprintf(stderr, "writing return values...\n");
 
   plhs[0] = mxCreateDoubleMatrix(1, 1, mxREAL);
-  double *ret0 = mxGetPr(plhs[0]);
-  *ret0 = opt_score;
+  if (plhs[0]==NULL)
+    mexErrMsgTxt("memory allocation failed");
+  double *ret_score = mxGetPr(plhs[0]);
+  *ret_score = opt_score;
   
   plhs[1] = mxCreateDoubleMatrix(1, LEN, mxREAL);
-  double *ret1 = mxGetPr(plhs[1]);
+  if (plhs[1]==NULL)
+    mexErrMsgTxt("memory allocation failed");
+  double *ret_path = mxGetPr(plhs[1]);
   // convert 0-based state sequence to 1-based sequence for Matlab
-  double conv_path[LEN];
   for (int p=0; p<LEN; ++p) {
 //    printf("best_path[%i] = %i\n", p, opt_path[p]);
-    conv_path[p] = ((double) opt_path[p]) + 1.0;
+    ret_path[p] = ((double) opt_path[p]) + 1.0;
   }
-  memcpy(ret1, conv_path, mxGetM(plhs[1])*mxGetN(plhs[1])*mxGetElementSize(plhs[1]));
 
   // clean-up
   for (int i = 0; i<LEN; ++i) {

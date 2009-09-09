@@ -242,6 +242,7 @@ last_obj = 0;
 t_start = clock();
 
 for iter=1:PAR.max_num_iter,
+  fprintf('\n\nIteration %i:\n', iter);
   new_constraints = zeros(1,PAR.num_train_exm);
   t_start_cg = clock();
   for i=1:length(train_exm_ids)
@@ -302,11 +303,10 @@ for iter=1:PAR.max_num_iter,
       end
     end
   end
-  fprintf('Generated %i new constraints\n\n', sum(new_constraints));
+  fprintf('Generated %i new constraints\n', sum(new_constraints));
   t_stop_cg = clock();
-  fprintf('Constraint generation took %3.2f sec\n\n', etime(t_stop_cg, t_start_cg));
- 
-  fprintf('Mean training accuracy (prior to solving): %2.1f%%\n', mean(trn_acc));
+  fprintf('Constraint generation took %3.2f sec\n', etime(t_stop_cg, t_start_cg));
+  fprintf('Mean training accuracy (prior to solving): %2.1f%%\n\n', mean(trn_acc));
  
   %%% solve intermediate optimization problem
   tic

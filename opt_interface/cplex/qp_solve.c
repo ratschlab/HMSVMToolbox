@@ -278,8 +278,8 @@ void mexFunction(
 		  cpenv = (long*) mxGetPr(prhs[0]);
 	  }
   }
-  /*if (display>3) */
-	  fprintf(STD_OUT,"argument processing finished") ;
+  if(display>3) 
+	fprintf(STD_OUT,"argument processing finished\n") ;
   
   /* Initialize the CPLEX environment */
   env = (CPXENVptr) cpenv[0] ;
