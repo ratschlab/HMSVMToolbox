@@ -38,5 +38,5 @@ end
 progress = progress(1:last_found);
 
 if VERBOSE,
-  plot_progress(progress);
+  plot_progress(progress, gcf);
 end

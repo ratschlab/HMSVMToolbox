@@ -77,12 +77,6 @@ if exist('true_label_seq', 'var'),
 
   [true_path.transition_weights, true_path.plif_weights] ...
       = path_weights(true_path.state_seq, obs_seq, score_plifs, length(state_model));
-
-%  keyboard
-%  [tw_ pw_] = path_weights_old(true_path.state_seq, obs_seq, score_plifs, state_model);
-%  [tw pw] = path_weights(true_path.state_seq, obs_seq, score_plifs, length(state_model));
-%  assert(isequal(tw, tw_));
-%  assert(isequal(pw, pw_));
  
   % position-wise loss of the decoded state sequence
   loss = eval(sprintf('%s(true_path.state_seq, state_model, PAR);', ...
@@ -95,12 +89,6 @@ if exist('true_label_seq', 'var'),
   [pred_path.transition_weights, pred_path.plif_weights] ...
       = path_weights(pred_state_seq, obs_seq, score_plifs, length(state_model));
   
-%  keyboard
-%  [tw_ pw_] = path_weights_old(pred_state_seq, obs_seq, score_plifs, state_model);
-%  [tw pw] = path_weights(pred_state_seq, obs_seq, score_plifs, length(state_model));
-%  assert(isequal(tw, tw_));
-%  assert(isequal(pw, pw_));
-
   %%%%% Viterbi decoding to obtain best prediction WITH loss, 
   %%%%% i.e. the maximal margin violater (MMV)
   
@@ -123,10 +111,4 @@ if exist('true_label_seq', 'var'),
   
   [pred_path_mmv.transition_weights, pred_path_mmv.plif_weights] ...
       = path_weights(pred_state_seq, obs_seq, score_plifs, length(state_model));
-  
-%  keyboard
-%  [tw_ pw_] = path_weights_old(pred_state_seq, obs_seq, score_plifs, state_model);
-%  [tw pw] = path_weights(pred_state_seq, obs_seq, score_plifs, length(state_model));
-%  assert(isequal(tw, tw_));
-%  assert(isequal(pw, pw_));
 end

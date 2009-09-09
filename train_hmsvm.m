@@ -373,7 +373,7 @@ for iter=1:PAR.max_num_iter,
     end
     if PAR.submit_jobs > 0,
       rproc_par.priority   = 17;
-      rproc_par.identifier = sprintf('mSTADspseq_acc_');
+      rproc_par.identifier = sprintf('hmsvm_acc_');
       rproc_par.verbosity  = 0;
       rproc_par.start_dir  = PAR.include_paths{1};
       rproc_memreq         = 2200;

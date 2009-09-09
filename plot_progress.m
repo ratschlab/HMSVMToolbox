@@ -17,21 +17,35 @@ else
   figure;
 end
 
+idx = ones(1,length(progress));
+for i=1:length(progress),
+  if isnan(progress(i).objective),
+    idx(i) = 0;
+  end
+  if isnan(progress(i).trn_acc),
+    idx(i) = 0;
+  end
+  if isnan(progress(i).val_acc),
+    idx(i) = 0;
+  end
+end
+idx = find(idx);
+
 hold on
 lg = {};
 if isfield(progress, 'objective'),
-  r_obj = [progress.objective] ./ max([progress.objective]);
-  plot(r_obj, '.--k');
+  r_obj = [progress(idx).objective] ./ max([progress(idx).objective]);
+  plot(idx, r_obj, '.--k');
   lg{end+1} = 'rel. objective value';
 end
 
-tr_acc = mean([progress.trn_acc]);
-plot(tr_acc, '.-b');
+tr_acc = mean([progress(idx).trn_acc]);
+plot(idx, tr_acc, '.-b');
 lg{end+1} = 'training accuracy';
 
 if isfield(progress, 'val_acc'),
-  v_acc = mean([progress.val_acc]);
-  plot(v_acc, '.-r');
+  v_acc = mean([progress(idx).val_acc]);
+  plot(idx, v_acc, '.-r');
   lg{end+1} = 'validation accuracy';
 end
 

@@ -75,7 +75,7 @@ for p=1:length(predictor_dirs),
 end
 
 if length(predictors) > 1,
-  % if more than one predictor is given re-assemble cross-validation test
+  % if more than one predictor is given, re-assemble cross-validation test
   % data, by assigning a predictor at random where test examples overlap
   idx = find(sum(pred_exms)>1);
   for j=1:length(idx),

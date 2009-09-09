@@ -33,6 +33,7 @@
 #include "matrix.h"
 #include "score_plif_struct.h"
 
+
 void add_fraction(double* vec, const double val, const double* lim, const int L) {
   int idx = 0;
   for (int i=0; i<L; ++i) {
@@ -53,16 +54,26 @@ void add_fraction(double* vec, const double val, const double* lim, const int L)
   }
 }
 
+/*
+ * index conversion from a pair of (row, column) indices (Matlab
+ * style) into a single array index (C style)
+ */
 inline int conv_index2(const int row, const int col, const int NUM_ROWS) {
   return col * NUM_ROWS + row;
 }
 
+/*
+ * index conversion from a triple of (d1, d2, d3) indices (Matlab
+ * style for 3-dimensional matrices) into a single array index (C
+ * style)
+ */
 inline int conv_index3(const int d1, const int d2, const int d3, const int DIM1, const int DIM2) {
   return d3 * DIM1*DIM2 + d2*DIM1 + d1;
 }
 
-void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {		  
 
+/* actual mex function for computing path weights */
+void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   if(nrhs != 4) {
     mexErrMsgTxt("expected 4 input arguments:\n [trans_weights, plif_weights] = path_weights(state_seq, obs_seq, score_plifs, num_states)\n");
     return;
@@ -91,7 +102,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   score_plif_struct *scr_ptr;
   int scr_M = 0; int scr_N = 0;
   scr_ptr = read_score_plif_struct(prhs[arg], scr_M, scr_N);
-//  mexPrintf("Read score PLiF struct (%i x %i)\n", scr_M, scr_N);
+//  mexPrintf("  read score PLiF struct (%i x %i)\n", scr_M, scr_N);
   ++arg;
 
   const int NUM_STATES = (int) mxGetScalar(prhs[arg]);
@@ -100,7 +111,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   // create 1st return argument: array of transition weights
   plhs[0] = mxCreateDoubleMatrix(NUM_STATES, NUM_STATES, mxREAL);
   double *trans_weights = mxGetPr(plhs[0]);
-  // will already be intialized to 0
+  // will already be intialized to 0 by mxCreateDoubleMatrix
 
   // compute transition weights
   for (int i=0; i<LEN-1; ++i) {
@@ -120,7 +131,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   dims[2] = NUM_PLIF_NODES;
   plhs[1] = mxCreateNumericArray(num_dim, dims, mxDOUBLE_CLASS, mxREAL);
   double *plif_weights = mxGetPr(plhs[1]);
-  // will already be intialized to 0
+  // will already be intialized to 0 by mxCreateNumericArray
 
   // compute plif weights
   double vec[NUM_PLIF_NODES];
@@ -142,5 +153,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
       }
     }
   }
+
+  // clean up
+  delete_score_plif_struct_matrix(scr_ptr, scr_M, scr_N);
 }
 
