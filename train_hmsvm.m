@@ -306,7 +306,7 @@ for iter=1:PAR.max_num_iter,
   fprintf('Generated %i new constraints\n', sum(new_constraints));
   t_stop_cg = clock();
   fprintf('Constraint generation took %3.2f sec\n', etime(t_stop_cg, t_start_cg));
-  fprintf('Mean training accuracy (prior to solving): %2.1f%%\n\n', mean(trn_acc));
+  fprintf('Mean training accuracy (prior to solving): %2.1f%%\n\n', 100*mean(trn_acc));
  
   %%% solve intermediate optimization problem
   tic
