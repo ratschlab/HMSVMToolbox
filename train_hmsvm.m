@@ -241,10 +241,18 @@ last_obj = 0;
 % record elapsed time
 t_start = clock();
 
+rproc_submit=1 ;
+rproc_mem=2000 ; % in MB
+rproc_options=[] ;
+rproc_options.priority=100 ;
+rproc_time=10 ; % in minutes
+
 for iter=1:PAR.max_num_iter,
   fprintf('\n\nIteration %i:\n', iter);
   new_constraints = zeros(1,PAR.num_train_exm);
   t_start_cg = clock();
+
+  jobinfo = rproc_empty(0) ;
   for i=1:length(train_exm_ids)
     idx = find(exm_id_intervals(:,1)==train_exm_ids(i));
     idx = exm_id_intervals(idx,2):exm_id_intervals(idx,3);
@@ -252,29 +260,63 @@ for iter=1:PAR.max_num_iter,
     true_label_seq = label(idx);
     true_state_seq = state_label(idx);
     
-    %%% Viterbi decoding
-    [pred_path true_path pred_path_mmv] ...
-        = decode_Viterbi(obs_seq, transition_scores, score_plifs, ...
-                         PAR, true_label_seq, true_state_seq);
-    if PAR.extra_checks,
-      w = weights_to_vector(pred_path.transition_weights, ...
-                            pred_path.plif_weights, state_model, ...
-                            res_map, PAR);
-      assert(abs(w*res(1:PAR.num_param) - pred_path.score) < PAR.epsilon);
-  
-      w = weights_to_vector(pred_path_mmv.transition_weights, ...
-                            pred_path_mmv.plif_weights, state_model, ...
-                            res_map, PAR);
-      assert(abs(w*res(1:PAR.num_param) - pred_path_mmv.score) < PAR.epsilon);
-    end
+    rproc_PAR=[] ;
+    rproc_PAR.obs_seq=obs_seq ;
+    rproc_PAR.transition_scores=transition_scores ;
+    rproc_PAR.score_plifs=score_plifs ;
+    rproc_PAR.PAR=PAR ;
+    rproc_PAR.true_label_seq=true_label_seq ;
+    rproc_PAR.true_state_seq=true_state_seq ;
+    rproc_PAR.state_model=state_model ;
+    rproc_PAR.res_map=res_map ;
+    rproc_PAR.true_path=true_path ;
+    rproc_PAR.res=res ;
+
+    if rproc_submit==0,
+      res_PAR{i} = gen_path(rproc_PAR) ;
+    else
+      jobinfo(i)=rproc('gen_path', rproc_PAR, rproc_mem, rproc_options, rproc_time) ;
+    end ;
+  end ;
+
+  if rproc_submit~=0,
+    [jobinfo, num_crashed] = rproc_wait(jobinfo, 10, 1, 0);
+    if num_crashed>0,
+      fprintf('%i jobs crashed\n', num_crashed) ;
+    end ;
+    
+    for i=1:length(train_exm_ids)
+      try,
+        res_PAR{i}=rproc_result(jobinfo(i)) ;
+        rproc_cleanup(jobinfo(i)) ;
+      catch
+        fprintf('obtaining result for job %i failed\n', i) ;
+        res_PAR{i}=[] ;
+      end ;
+    end ;
+
+  end ;
+
+  for i=1:length(train_exm_ids)
+    %idx = find(exm_id_intervals(:,1)==train_exm_ids(i));
+    %idx = exm_id_intervals(idx,2):exm_id_intervals(idx,3);
+    %obs_seq = signal(:,idx);
+    %true_label_seq = label(idx);
+    %true_state_seq = state_label(idx);
+
+    if isempty(res_PAR{i})
+      continue ;
+    end ;
+
+    pred_path=res_PAR{i}.pred_path ;
+    true_path=res_PAR{i}.true_path ;
+    pred_path_mmv=res_PAR{i}.pred_path_mmv ;
+    w=res_PAR{i}.w ;
+    w_p=res_PAR{i}.w_p ;
+    w_n=res_PAR{i}.w_n ;
+
     trn_acc(i) = mean(true_path.label_seq==pred_path.label_seq);
 
-    w_p = weights_to_vector(true_path.transition_weights, ...
-                            true_path.plif_weights, state_model, ...
-                            res_map, PAR);
-    w_n = weights_to_vector(pred_path_mmv.transition_weights, ...
-                            pred_path_mmv.plif_weights, state_model, ...
-                            res_map, PAR);
     weight_delta = w_p - w_n;
     assert(length(weight_delta) == PAR.num_param);
 
