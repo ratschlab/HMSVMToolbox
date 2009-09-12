@@ -79,7 +79,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   // start dynamic programming
 //  printf("filling dynamic programmming matrix...\n");
 //  printf("NUM_STATES=%i, LEN=%i\n", NUM_STATES, LEN);
-  double INF = INFINITY;
+  const double INF = INFINITY;
   double **dpm = new double*[LEN];   // d.p. matrix
   if (dpm==NULL)
     mexErrMsgTxt("memory allocation failed");

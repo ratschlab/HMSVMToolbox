@@ -52,11 +52,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   ++arg;
   
   // compute scores along the possible paths for X
+  const double INF = INFINITY;
   const int L = X_N;                      // length of the given example
   const int n_states = scr_N;
-  double *pp = new double[L*n_states];
-  for (int i=0; i<L*n_states; ++i)
-    pp[i] = 0.0;
+  plhs[0] = mxCreateDoubleMatrix(n_states, L, mxREAL);
+  double *pp = mxGetPr(plhs[0]);
+  // will already be initialized to 0.0 by mxCreateDoubleMatrix
+
   // scores for real-valued features
   for (int pos=0; pos<L; ++pos) {         // for all positions in given example
     for (int f=0; f<scr_M; ++f) {         // for all features
@@ -66,17 +68,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	const int pp_idx = pos*n_states+s;
 	const int X_idx = pos*X_M+f;
 	
-	pp[pp_idx] += lookup_score_plif(&scr_ptr[scr_idx], X_ptr[X_idx]);
+	if X_ptr[X_idx] > -INF
+	  pp[pp_idx] += lookup_score_plif(&scr_ptr[scr_idx], X_ptr[X_idx]);
+	else
+	  pp[pp_idx] = -INF;
       }
     }
   }
   	
-  // prepare return values
-//  fprintf(stderr, "writing return values...\n");
-  plhs[0] = mxCreateDoubleMatrix(n_states, L, mxREAL);
-  double *ret0 = mxGetPr(plhs[0]);
-  memcpy(ret0, pp, mxGetM(plhs[0])*mxGetN(plhs[0])*mxGetElementSize(plhs[0]));
-  
+  // clean up
   delete_score_plif_struct_matrix(scr_ptr, scr_M, scr_N);
-  delete[] pp;
 }

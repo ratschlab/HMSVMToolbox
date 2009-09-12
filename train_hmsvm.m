@@ -22,97 +22,8 @@ if isfield(PAR, 'include_paths'),
   end
 end
 
-% option to enable/disable some extra consistency checks
-if ~isfield(PAR, 'extra_checks'),
-  PAR.extra_checks = 0;
-end
-
-% option to control the amount of output
-if ~isfield(PAR, 'verbose'),
-  PAR.verbose = 1;
-end
-if PAR.verbose>=1,
-  fh1 = figure;
-end
-
-% option to enable/disable performance checks during training
-if ~isfield(PAR, 'check_acc'),
-  PAR.check_acc = 1;
-end
-
-% stopping criterion: constraint generation is terminated if no more
-% margin violations are found or the relative change of the objective
-% function is smaller than this parameter...
-if ~isfield(PAR, 'min_rel_obj_change'),
-  PAR.min_rel_obj_change = 10^-3;
-end
-% ... or if the maximum number of iterations is exceeded
-if ~isfield(PAR, 'max_num_iter'),
-  PAR.max_num_iter = 1000;
-end
-
-% margin constraints are only added if the example is predicted with an
-% accuracy below this parameter
-if ~isfield(PAR, 'max_accuracy'),
-  PAR.max_accuracy = 0.99;
-end
-% and if the max margin violator incurs a loss at least as high as this
-% parameter
-if ~isfield(PAR, 'min_loss'),
-  PAR.min_loss = 1;
-end
-
-% numerical tolerance to check consistent score calculation, constraint
-% satisfaction and monotonictiy of the objective function
-if ~isfield(PAR, 'epsilon'),
-  PAR.epsilon = 10^-6;
-end
-
-% option to only solve partial intermediate training problems which do
-% not contain constraints satisfied with a margin at least as large as
-% the parameter value. Such constraints are however kept aside and
-% checked in each iteration. Set to inf to always solve the full problem.
-% Throwing away constraints is a HEURISTIC which speeds up training at
-% the cost of losing the guarantee to converge to the correct solution!
-if ~isfield(PAR, 'constraint_margin'),
-  PAR.constraint_margin = inf;
-end
-
-% optimization software used to solve the (intermediate) training
-% problem(s). Currently there are two possibilities: 'cplex' or 'mosek'
-if ~isfield(PAR, 'optimizer'),
-  PAR.optimizer = 'cplex' % one of 'cplex' or 'mosek'
-  % path to the optimizer interface
-  addpath(sprintf('opt_interface/%s', PAR.optimizer));
-end
-
-% subsample examples for performance checks
-if ~isfield(PAR, 'max_num_vald_exms'),
-  PAR.max_num_vald_exms = 100;
-end
-
-% by default, do not submit any cluster jobs from within HM-SVM training
-if ~isfield(PAR, 'submit_jobs'),
-  PAR.submit_jobs = 0;
-end
-
-
-% seed for random number generation
-rand('seed', 11081979);
-
-% mandatory fields of the parameter struct
-assert(isfield(PAR, 'C_small'));
-assert(isfield(PAR, 'C_smooth'));
-assert(isfield(PAR, 'C_coupling'));
-assert(isfield(PAR, 'num_train_exm'));
-assert(isfield(PAR, 'data_file'));
-assert(isfield(PAR, 'out_dir'));
-assert(isfield(PAR, 'model_dir'));
-assert(isfield(PAR, 'reg_type'));
-
-if ~exist(PAR.out_dir, 'dir'),
-  mkdir(PAR.out_dir);
-end
+%%%%% initialize and chek PAR struct
+PAR = set_default_par(PAR);
 
 %%%%% init state model
 if exist(PAR.model_name)~=7,
@@ -240,87 +151,73 @@ trn_acc = zeros(1,length(train_exm_ids));
 last_obj = 0;
 % record elapsed time
 t_start = clock();
-
-rproc_submit=1 ;
-rproc_mem=2000 ; % in MB
-rproc_options=[] ;
-rproc_options.priority=100 ;
-rproc_time=10 ; % in minutes
+if PAR.verbose>=1,
+  fh1 = figure;
+end
 
 for iter=1:PAR.max_num_iter,
   fprintf('\n\nIteration %i:\n', iter);
   new_constraints = zeros(1,PAR.num_train_exm);
   t_start_cg = clock();
 
-  jobinfo = rproc_empty(0) ;
-  for i=1:length(train_exm_ids)
+  jobinfo = rproc_empty(0);
+  for i=1:length(train_exm_ids),
     idx = find(exm_id_intervals(:,1)==train_exm_ids(i));
     idx = exm_id_intervals(idx,2):exm_id_intervals(idx,3);
-    obs_seq = signal(:,idx);
-    true_label_seq = label(idx);
-    true_state_seq = state_label(idx);
-    
-    rproc_PAR=[] ;
-    rproc_PAR.obs_seq=obs_seq ;
-    rproc_PAR.transition_scores=transition_scores ;
-    rproc_PAR.score_plifs=score_plifs ;
-    rproc_PAR.PAR=PAR ;
-    rproc_PAR.true_label_seq=true_label_seq ;
-    rproc_PAR.true_state_seq=true_state_seq ;
-    rproc_PAR.state_model=state_model ;
-    rproc_PAR.res_map=res_map ;
-    rproc_PAR.true_path=true_path ;
-    rproc_PAR.res=res ;
+    ARGS = [];
+    ARGS.obs_seq = signal(:,idx);
+    ARGS.true_label_seq = label(idx);
+    ARGS.true_state_seq = state_label(idx);
+    ARGS.transition_scores = transition_scores;
+    ARGS.score_plifs = score_plifs;
+    ARGS.PAR = PAR;
+    ARGS.state_model = state_model;
+    ARGS.res_map = res_map;
+    ARGS.res = res;
 
-    if rproc_submit==0,
-      res_PAR{i} = gen_path(rproc_PAR) ;
+    if PAR.submit_jobs > 1,
+      rproc_opt            = [];
+      rproc_opt.priority   = 205;
+      rproc_opt.identifier = sprintf('hmsvm_path_');
+      rproc_opt.verbosity  = 0;
+      rproc_opt.start_dir  = PAR.include_paths{1};
+      rproc_memreq         = 1900;
+      rproc_time           = length(train_exm_ids) + length(holdout_exm_ids);
+      jobinfo(i) = rproc('gen_path', ARGS, rproc_memreq, rproc_opt, rproc_time);
     else
-      jobinfo(i)=rproc('gen_path', rproc_PAR, rproc_mem, rproc_options, rproc_time) ;
-    end ;
-  end ;
+      path_result{i} = gen_path(ARGS);
+    end
+  end
 
-  if rproc_submit~=0,
+  if PAR.submit_jobs > 1,
     [jobinfo, num_crashed] = rproc_wait(jobinfo, 10, 1, 0);
     if num_crashed>0,
-      fprintf('%i jobs crashed\n', num_crashed) ;
-    end ;
+      fprintf('%i jobs crashed\n', num_crashed);
+    end
     
     for i=1:length(train_exm_ids)
-      try,
-        res_PAR{i}=rproc_result(jobinfo(i)) ;
-        rproc_cleanup(jobinfo(i)) ;
+      try
+        path_result{i} = rproc_result(jobinfo(i));
+        rproc_cleanup(jobinfo(i));
       catch
-        fprintf('obtaining result for job %i failed\n', i) ;
-        res_PAR{i}=[] ;
-      end ;
-    end ;
-
-  end ;
+        fprintf('obtaining result for job %i failed\n', i);
+        path_result{i} = [];
+      end
+    end
+  end
 
   for i=1:length(train_exm_ids)
-    %idx = find(exm_id_intervals(:,1)==train_exm_ids(i));
-    %idx = exm_id_intervals(idx,2):exm_id_intervals(idx,3);
-    %obs_seq = signal(:,idx);
-    %true_label_seq = label(idx);
-    %true_state_seq = state_label(idx);
+    if isempty(path_result{i}),
+      continue
+    end
 
-    if isempty(res_PAR{i})
-      continue ;
-    end ;
+    trn_acc(i) = mean(path_result{i}.true_path.label_seq ...
+                      == path_result{i}.pred_path.label_seq);
 
-    pred_path=res_PAR{i}.pred_path ;
-    true_path=res_PAR{i}.true_path ;
-    pred_path_mmv=res_PAR{i}.pred_path_mmv ;
-    w=res_PAR{i}.w ;
-    w_p=res_PAR{i}.w_p ;
-    w_n=res_PAR{i}.w_n ;
-
-    trn_acc(i) = mean(true_path.label_seq==pred_path.label_seq);
-
-    weight_delta = w_p - w_n;
+    weight_delta = path_result{i}.w_p - path_result{i}.w_n;
     assert(length(weight_delta) == PAR.num_param);
 
-    loss = sum(pred_path_mmv.loss);
+    loss = sum(path_result{i}.pred_path_mmv.loss);
     if norm(weight_delta)==0, assert(loss < PAR.epsilon); end
 
     score_delta = weight_delta*res(1:PAR.num_param);
@@ -400,6 +297,7 @@ for iter=1:PAR.max_num_iter,
 
   %%% check prediction accuracy on training examples
   if PAR.check_acc,
+    ARGS = [];
     ARGS.PAR = PAR;
     ARGS.train_exm_ids = train_exm_ids;
     ARGS.holdout_exm_ids = holdout_exm_ids;
@@ -414,13 +312,14 @@ for iter=1:PAR.max_num_iter,
       ARGS.fh1 = fh1;
     end
     if PAR.submit_jobs > 0,
-      rproc_par.priority   = 17;
-      rproc_par.identifier = sprintf('hmsvm_acc_');
-      rproc_par.verbosity  = 0;
-      rproc_par.start_dir  = PAR.include_paths{1};
-      rproc_memreq         = 2200;
+      rproc_opt            = [];
+      rproc_opt.priority   = 17;
+      rproc_opt.identifier = sprintf('hmsvm_acc_');
+      rproc_opt.verbosity  = 0;
+      rproc_opt.start_dir  = PAR.include_paths{1};
+      rproc_memreq         = 1700;
       rproc_time           = length(train_exm_ids) + length(holdout_exm_ids);
-      rproc('check_accuracy', ARGS, rproc_memreq, rproc_par, rproc_time);
+      rproc('check_accuracy', ARGS, rproc_memreq, rproc_opt, rproc_time);
      fprintf('Submitted job for performance checking\n\n');
    else
       check_accuracy(ARGS);
@@ -460,7 +359,7 @@ for iter=1:PAR.max_num_iter,
       pause(1)
     end
 
-    % terminate optimizer and return
+    % terminate optimizer and exit
     opt_close(opt_env);
     return
   end
