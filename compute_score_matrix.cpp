@@ -68,10 +68,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	const int pp_idx = pos*n_states+s;
 	const int X_idx = pos*X_M+f;
 	
-	if X_ptr[X_idx] > -INF
-	  pp[pp_idx] += lookup_score_plif(&scr_ptr[scr_idx], X_ptr[X_idx]);
-	else
-	  pp[pp_idx] = -INF;
+	//	if (X_ptr[X_idx] > -INF)
+	pp[pp_idx] += lookup_score_plif(&scr_ptr[scr_idx], X_ptr[X_idx]);
+	//	else
+	//	  pp[pp_idx] = -INF;
       }
     }
   }

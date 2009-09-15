@@ -6,11 +6,6 @@ function RET = gen_path(ARGS)
 %
 % written by Gunnar Raetsch & Georg Zeller, MPI Tuebingen, Germany, 2009
 
-% include user-specified include paths
-for i=1:length(ARGS.PAR.include_paths),
-  addpath(ARGS.PAR.include_paths{i});
-end
-
 %%% Viterbi decoding
 [pred_path true_path pred_path_mmv] ...
     = decode_Viterbi(ARGS.obs_seq, ARGS.transition_scores, ARGS.score_plifs, ...

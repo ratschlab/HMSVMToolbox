@@ -181,6 +181,7 @@ for iter=1:PAR.max_num_iter,
       rproc_opt.identifier = sprintf('hmsvm_path_');
       rproc_opt.verbosity  = 0;
       rproc_opt.start_dir  = PAR.include_paths{1};
+      rproc_opt.addpaths   = PAR.include_paths;
       rproc_memreq         = 1900;
       rproc_time           = length(train_exm_ids) + length(holdout_exm_ids);
       jobinfo(i) = rproc('gen_path', ARGS, rproc_memreq, rproc_opt, rproc_time);
@@ -259,14 +260,16 @@ for iter=1:PAR.max_num_iter,
     [res, lambda, how] ...
         = qp_solve(opt_env, Q, f, sparse(A(part_idx,:)), b(part_idx), lb, ub, 0, 1, 'bar');
     if ~isequal(how, 'OK'),
-      error('Optimizer problem: %s',how);
+%      error('Optimizer problem: %s',how);
+      warning('Optimizer problem: %s',how);
     end
     obj = 0.5*res'*Q*res + f'*res;
    case 'LP',
     [res, lambda, how] ...
         = lp_solve(opt_env, f, sparse(A(part_idx,:)), b(part_idx), lb, ub, 0, 1, 'bar');
     if ~isequal(how, 'OK'),
-      error('Optimizer problem: %s', how);
+%      error('Optimizer problem: %s', how);
+      warning('Optimizer problem: %s', how);
     end
     obj = f'*res;
    otherwise,
@@ -317,6 +320,7 @@ for iter=1:PAR.max_num_iter,
       rproc_opt.identifier = sprintf('hmsvm_acc_');
       rproc_opt.verbosity  = 0;
       rproc_opt.start_dir  = PAR.include_paths{1};
+      rproc_opt.addpaths   = PAR.include_paths;
       rproc_memreq         = 1700;
       rproc_time           = length(train_exm_ids) + length(holdout_exm_ids);
       rproc('check_accuracy', ARGS, rproc_memreq, rproc_opt, rproc_time);
