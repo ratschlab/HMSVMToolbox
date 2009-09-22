@@ -1,8 +1,8 @@
-function progress = train_hmsvm(PAR)
+function progress = train_hmsvm_para(PAR)
 
-% progress = train_hmsvm(PAR)
+% progress = train_hmsvm_para(PAR)
 %
-% Trains an HM-SVM.
+% Trains an HM-SVM in a parallelized manner submitting jobs to a cluster.
 %
 % PAR -- a struct to configure the HM-SVM (for specification see
 %   setup_hmsvm_training.m)
@@ -151,6 +151,8 @@ assert(all(size(res_map) == size(score_plifs)));
 
 
 %%%%% start iterative training
+% iteration counter
+iter = 1;
 % a struct keeping track of training progress
 progress = [];
 % accuracy on training examples
@@ -159,42 +161,102 @@ trn_acc = zeros(1,length(train_exm_ids));
 last_obj = 0;
 % record elapsed time
 t_start = clock();
-if PAR.verbose > 0 && PAR.check_acc > 0,
-  fh1 = figure;
-end
 
-for iter=1:PAR.max_num_iter,
-  fprintf('\n\nIteration %i:\n', iter);
+assert(PAR.submit_batch > 0);
+assert(mod(PAR.num_train_exm, PAR.submit_batch) == 0);
+
+while iter<=PAR.max_num_iter,
+  fprintf('\n\nIteration %i (%s):\n', iter, datestr(now,'yyyy-mm-dd_HHhMM'));
   new_constraints = zeros(1,PAR.num_train_exm);
   t_start_cg = clock();
 
+  %%% submit jobs for constraint generation
+  %%% The decoding of m examples will be send off as one job (where m = PAR.submit_batch)
+  jobinfo = rproc_empty(0);
+  rproc_opt            = [];
+  rproc_opt.priority   = 629;
+  rproc_opt.identifier = sprintf('hmsvm_path_');
+  rproc_opt.verbosity  = 0;
+  rproc_opt.start_dir  = PAR.include_paths{1};
+  rproc_opt.addpaths   = PAR.include_paths;
+  rproc_memreq         = 3700;
+  rproc_time           = length(train_exm_ids) + length(holdout_exm_ids);
+  
+  ARGS = [];
+  ARGS.transition_scores = transition_scores;
+  ARGS.score_plifs = score_plifs;
+  ARGS.PAR = PAR;
+  ARGS.state_model = state_model;
+  ARGS.res_map = res_map;
+  ARGS.res = res;
+  clear idx
+  k = 1;
+  start_idx = 1;
   for i=1:length(train_exm_ids),
+    idx{k} = find(exm_id_intervals(:,1)==train_exm_ids(i));
+    idx{k} = exm_id_intervals(idx{k},2):exm_id_intervals(idx{k},3);
+    start_idx(end,2) = start_idx(end,1) + length(idx{k}) - 1;
+    start_idx(end+1,1) = start_idx(end,2) + 1;
+    
+    if k == PAR.submit_batch,
+      j = floor(i / PAR.submit_batch);
+      ARGS.obs_seq = signal(:,[idx{:}]);
+      ARGS.true_label_seq = label([idx{:}]);
+      ARGS.true_state_seq = state_label([idx{:}]);
+      start_idx(end,:) = [];
+      assert(size(start_idx,1) == PAR.submit_batch);
+      ARGS.start_idx = start_idx;
+      jobinfo(j) = rproc('gen_path', ARGS, rproc_memreq, rproc_opt, rproc_time);
+      clear idx
+      start_idx = 1;
+      k = 0;
+    end
+    k = k+1;
+  else
     idx = find(exm_id_intervals(:,1)==train_exm_ids(i));
     idx = exm_id_intervals(idx,2):exm_id_intervals(idx,3);
-    
-    %%% Viterbi decoding
-    [pred_path true_path pred_path_mmv] ...
-        = decode_Viterbi(obs_seq, transition_scores, score_plifs, ...
-                         PAR, true_label_seq, true_state_seq);
-
-    if PAR.extra_checks,
-      w = weights_to_vector(pred_path.transition_weights, pred_path.plif_weights, ...
-                            state_model, res_map, PAR);
-      assert(abs(w*res(1:PAR.num_param) - pred_path.score) < PAR.epsilon);
-  
-      w = weights_to_vector(pred_path_mmv.transition_weights, ...
-                            pred_path_mmv.plif_weights, state_model, ...
-                            res_map, PAR);
-      assert(abs(w*res(1:PAR.num_param) - pred_path_mmv.score) < PAR.epsilon);
+    ARGS.obs_seq = signal(:,idx);
+    ARGS.true_label_seq = label(idx);
+    ARGS.true_state_seq = state_label(idx);
+    if PAR.submit_path > 0,
+      jobinfo(i) = rproc('gen_path', ARGS, rproc_memreq, rproc_opt, rproc_time);
+    else
+      path_result{i} = gen_path(ARGS);
     end
-    
-    w_p = weights_to_vector(true_path.transition_weights, ...
-                            true_path.plif_weights, ...
-                            state_model, res_map, PAR);
-    w_n = weights_to_vector(pred_path_mmv.transition_weights, ...
-                            pred_path_mmv.plif_weights, ...
-                            state_model, res_map, PAR);
-    
+  end
+  
+  %%% collect the result from finished jobs
+  %%% crasehd jobs will simply be ignored (for the corresponding examples,
+  %no constraints will be generated in this iteration)
+  [jobinfo, num_crashed] = rproc_wait(jobinfo, 10, 1, 0);
+  if num_crashed > 0,
+    fprintf('%i jobs crashed\n', num_crashed);
+  end
+  exm_cnt = 0;
+  for k=1:j,
+    try
+      tmp = rproc_result(jobinfo(k), 6);
+      for i=1:PAR.submit_batch,
+        exm_cnt = exm_cnt + 1;
+        path_result{exm_cnt} = tmp(i);
+      end
+    catch
+      fprintf('purging result for failed job %i\n', k);
+      exm_cnt = (k-1)*PAR.submit_batch;
+      for i=1:PAR.submit_batch,
+        exm_cnt = exm_cnt + 1;
+        path_result{exm_cnt} = [];
+      end
+    end
+  end
+  assert(exm_cnt == length(train_exm_ids));
+
+  %%% convert decoding results into constraints in the training problem
+  for i=1:length(train_exm_ids)
+    if isempty(path_result{i}),
+      continue
+    end
+
     trn_acc(i) = mean(path_result{i}.true_path.label_seq ...
                       == path_result{i}.pred_path.label_seq);
 
@@ -213,7 +275,7 @@ for iter=1:PAR.max_num_iter,
       v(i) = 1;
       A = [A; -weight_delta, zeros(1, PAR.num_aux), -v];
       b = [b; -loss];
-      new_constraints(i) = 1;      
+      new_constraints(i) = 1;    
     end
     
     if PAR.verbose > 2,
@@ -243,7 +305,6 @@ for iter=1:PAR.max_num_iter,
     [res, lambda, how] ...
         = qp_solve(opt_env, Q, f, sparse(A(part_idx,:)), b(part_idx), lb, ub, 0, 1, 'bar');
     if ~isequal(how, 'OK'),
-%      error('Optimizer problem: %s',how);
       warning('Optimizer problem: %s',how);
     end
     obj = 0.5*res'*Q*res + f'*res;
@@ -251,7 +312,6 @@ for iter=1:PAR.max_num_iter,
     [res, lambda, how] ...
         = lp_solve(opt_env, f, sparse(A(part_idx,:)), b(part_idx), lb, ub, 0, 1, 'bar');
     if ~isequal(how, 'OK'),
-%      error('Optimizer problem: %s', how);
       warning('Optimizer problem: %s', how);
     end
     obj = f'*res;
@@ -262,9 +322,9 @@ for iter=1:PAR.max_num_iter,
   assert(length(res) == PAR.num_param+PAR.num_aux+PAR.num_train_exm);
   slacks = res(end-PAR.num_train_exm+1:end);
   diff = obj - last_obj;
-  % error if objective is not monotonically increasing
+  % warning if objective is not monotonically increasing
   if diff < -PAR.epsilon,
-    error('Decrease in objective function %f by %f', obj, diff);
+    warning('Decrease in objective function %f by %f', obj, diff);
   end
   last_obj = obj;
   fprintf('  objective = %1.6f (diff = %1.6f), sum_slack = %1.6f\n', ...
@@ -281,7 +341,8 @@ for iter=1:PAR.max_num_iter,
   progress(iter).objective = obj;
   progress(iter).el_time = etime(clock(), t_start);
 
-  %%% check prediction accuracy on training examples
+  %%% check prediction accuracy on training and holdout examples;
+  %%% accuracy check can be run as an independent job
   if PAR.check_acc,
     ARGS = [];
     ARGS.PAR = PAR;
@@ -294,23 +355,17 @@ for iter=1:PAR.max_num_iter,
     ARGS.score_plifs = score_plifs;
     ARGS.progress = progress;
     ARGS.iter = iter;
-    if PAR.verbose > 0,
-      ARGS.fh1 = fh1;
-    end
-    if PAR.submit_vald > 0,
-      rproc_opt            = [];
-      rproc_opt.priority   = 17;
-      rproc_opt.identifier = sprintf('hmsvm_acc_');
-      rproc_opt.verbosity  = 0;
-      rproc_opt.start_dir  = PAR.include_paths{1};
-      rproc_opt.addpaths   = PAR.include_paths;
-      rproc_memreq         = 1700;
-      rproc_time           = length(train_exm_ids) + length(holdout_exm_ids);
-      rproc('check_accuracy', ARGS, rproc_memreq, rproc_opt, rproc_time);
-     fprintf('Submitted job for performance checking\n\n');
-   else
-      check_accuracy(ARGS);
-    end
+
+    rproc_opt            = [];
+    rproc_opt.priority   = 17;
+    rproc_opt.identifier = sprintf('hmsvm_acc_');
+    rproc_opt.verbosity  = 0;
+    rproc_opt.start_dir  = PAR.include_paths{1};
+    rproc_opt.addpaths   = PAR.include_paths;
+    rproc_memreq         = 1700;
+    rproc_time           = length(train_exm_ids) + length(holdout_exm_ids);
+    rproc('check_accuracy', ARGS, rproc_memreq, rproc_opt, rproc_time);
+    fprintf('Submitted job for performance checking\n\n');
   end
   
   if PAR.verbose>=3,
@@ -324,19 +379,20 @@ for iter=1:PAR.max_num_iter,
     fname = sprintf('lsl_iter%i', iter);
     save([PAR.out_dir fname], 'PAR', 'state_model', 'score_plifs', 'transition_scores', ...
          'trn_acc', 'A', 'b', 'Q', 'f', 'lb', 'ub', 'slacks', 'res', ...
-         'train_exm_ids', 'holdout_exm_ids');
+         'train_exm_ids', 'holdout_exm_ids', 'progress');
   end
   
   %%% save and terminate training if no more constraints are generated or
   %%% the change of the objective function over the last three iterations
   %%% was unsubstantial
-  if all(new_constraints==0) ...
-        || (iter>3 && obj-progress(iter-3).objective < obj*PAR.min_rel_obj_change),
+  if all(new_constraints==0), ...
+        || (iter>3 && ~isempty(progress(iter-3).objective) ...
+            && obj-progress(iter-3).objective < obj*PAR.min_rel_obj_change),
     fprintf('Saving final result...\n\n\n');
     fname = sprintf('lsl_final');
     save([PAR.out_dir fname], 'PAR', 'state_model', 'score_plifs', 'transition_scores', ...
          'trn_acc', 'A', 'b', 'Q', 'f', 'lb', 'ub', 'slacks', 'res', ...
-         'train_exm_ids', 'holdout_exm_ids');
+         'train_exm_ids', 'holdout_exm_ids', 'progress');
 
     if PAR.verbose>=2,
       eval(sprintf('%s(state_model, score_plifs, PAR, transition_scores);', ...
@@ -350,6 +406,7 @@ for iter=1:PAR.max_num_iter,
     opt_close(opt_env);
     return
   end
+  iter = iter + 1;
 end
 
 % eof
