@@ -41,7 +41,7 @@ if ~exist('signal', 'var'),
   if isequal(fn_data(end-3:end), '.mat'),
     fn_data = fn_data(1:end-4);
   end
-  fn_data = [fn_data '_signal']
+  fn_data = [fn_data '_signal'];
   signal = load_struct(fn_data, 'signal');
 end
 
@@ -50,7 +50,7 @@ if ~exist('exm_id', 'var'),
  assert(exist('exm_id_intervals', 'var') ~= 0);
 else
   unq_exm_id = unique(exm_id);
-  exm_id_intervals = zeros(unq_exm_id,3);
+  exm_id_intervals = zeros(length(unq_exm_id),3);
   for i=1:length(unq_exm_id),
     idx = find(exm_id==unq_exm_id(i));
     exm_id_intervals(i,:) = [unq_exm_id(i), idx(1), idx(end)];
@@ -107,9 +107,8 @@ fprintf('using %i sequences for performance estimation.\n\n', ...
 
 
 %%%%% assemble model and score function structs,
-state_model = eval(sprintf('%s(PAR);', ...
-                           PAR.model_config.func_make_model));
-
+LABELS = eval(sprintf('%s();', PAR.model_config.func_get_label_set));
+state_model = eval(sprintf('%s(PAR);', PAR.model_config.func_make_model));
 [score_plifs transition_scores] = eval(sprintf('%s(signal, label, state_model, PAR);', ...
                                                PAR.model_config.func_init_parameters));
 assert(~any(isnan([score_plifs.limits])));
@@ -151,6 +150,8 @@ assert(all(size(res_map) == size(score_plifs)));
 
 
 %%%%% start iterative training
+% iteration counter
+iter = 1;
 % a struct keeping track of training progress
 progress = [];
 % accuracy on training examples
@@ -163,14 +164,17 @@ if PAR.verbose > 0 && PAR.check_acc > 0,
   fh1 = figure;
 end
 
-for iter=1:PAR.max_num_iter,
-  fprintf('\n\nIteration %i:\n', iter);
+while iter<=PAR.max_num_iter,
+  fprintf('\n\nIteration %i (%s):\n', iter, datestr(now,'yyyy-mm-dd_HHhMM'));
   new_constraints = zeros(1,PAR.num_train_exm);
   t_start_cg = clock();
 
   for i=1:length(train_exm_ids),
     idx = find(exm_id_intervals(:,1)==train_exm_ids(i));
     idx = exm_id_intervals(idx,2):exm_id_intervals(idx,3);
+    obs_seq = signal(:,idx);
+    true_label_seq = label(idx);
+    true_state_seq = state_label(idx);
     
     %%% Viterbi decoding
     [pred_path true_path pred_path_mmv] ...
@@ -195,13 +199,18 @@ for iter=1:PAR.max_num_iter,
                             pred_path_mmv.plif_weights, ...
                             state_model, res_map, PAR);
     
-    trn_acc(i) = mean(path_result{i}.true_path.label_seq ...
-                      == path_result{i}.pred_path.label_seq);
+    if isfield(LABELS, 'ambiguous')
+      eval_idx = true_path.label_seq ~= LABELS.ambiguous;
+    else
+      eval_idx = logical(ones(size(true_path.label_seq)));      
+    end
+    trn_acc(i) = mean(true_path.label_seq(eval_idx) ...
+                      == pred_path.label_seq(eval_idx));
 
-    weight_delta = path_result{i}.w_p - path_result{i}.w_n;
+    weight_delta = w_p - w_n;
     assert(length(weight_delta) == PAR.num_param);
 
-    loss = sum(path_result{i}.pred_path_mmv.loss);
+    loss = sum(pred_path_mmv.loss);
     if norm(weight_delta)==0, assert(loss < PAR.epsilon); end
 
     score_delta = weight_delta*res(1:PAR.num_param);
@@ -213,7 +222,7 @@ for iter=1:PAR.max_num_iter,
       v(i) = 1;
       A = [A; -weight_delta, zeros(1, PAR.num_aux), -v];
       b = [b; -loss];
-      new_constraints(i) = 1;      
+      new_constraints(i) = 1;
     end
     
     if PAR.verbose > 2,
@@ -243,7 +252,6 @@ for iter=1:PAR.max_num_iter,
     [res, lambda, how] ...
         = qp_solve(opt_env, Q, f, sparse(A(part_idx,:)), b(part_idx), lb, ub, 0, 1, 'bar');
     if ~isequal(how, 'OK'),
-%      error('Optimizer problem: %s',how);
       warning('Optimizer problem: %s',how);
     end
     obj = 0.5*res'*Q*res + f'*res;
@@ -251,7 +259,6 @@ for iter=1:PAR.max_num_iter,
     [res, lambda, how] ...
         = lp_solve(opt_env, f, sparse(A(part_idx,:)), b(part_idx), lb, ub, 0, 1, 'bar');
     if ~isequal(how, 'OK'),
-%      error('Optimizer problem: %s', how);
       warning('Optimizer problem: %s', how);
     end
     obj = f'*res;
@@ -262,9 +269,9 @@ for iter=1:PAR.max_num_iter,
   assert(length(res) == PAR.num_param+PAR.num_aux+PAR.num_train_exm);
   slacks = res(end-PAR.num_train_exm+1:end);
   diff = obj - last_obj;
-  % error if objective is not monotonically increasing
+  % warning if objective is not monotonically increasing
   if diff < -PAR.epsilon,
-    error('Decrease in objective function %f by %f', obj, diff);
+    warning('Decrease in objective function %f by %f', obj, diff);
   end
   last_obj = obj;
   fprintf('  objective = %1.6f (diff = %1.6f), sum_slack = %1.6f\n', ...
@@ -281,7 +288,8 @@ for iter=1:PAR.max_num_iter,
   progress(iter).objective = obj;
   progress(iter).el_time = etime(clock(), t_start);
 
-  %%% check prediction accuracy on training examples
+  %%% check prediction accuracy on training and holdout examples;
+  %%% accuracy check can be run as an independent job
   if PAR.check_acc,
     ARGS = [];
     ARGS.PAR = PAR;
@@ -324,19 +332,18 @@ for iter=1:PAR.max_num_iter,
     fname = sprintf('lsl_iter%i', iter);
     save([PAR.out_dir fname], 'PAR', 'state_model', 'score_plifs', 'transition_scores', ...
          'trn_acc', 'A', 'b', 'Q', 'f', 'lb', 'ub', 'slacks', 'res', ...
-         'train_exm_ids', 'holdout_exm_ids');
+         'train_exm_ids', 'holdout_exm_ids', 'progress');
   end
   
   %%% save and terminate training if no more constraints are generated or
   %%% the change of the objective function over the last three iterations
   %%% was unsubstantial
-  if all(new_constraints==0) ...
-        || (iter>3 && obj-progress(iter-3).objective < obj*PAR.min_rel_obj_change),
+  if all(new_constraints==0), ...
     fprintf('Saving final result...\n\n\n');
     fname = sprintf('lsl_final');
     save([PAR.out_dir fname], 'PAR', 'state_model', 'score_plifs', 'transition_scores', ...
          'trn_acc', 'A', 'b', 'Q', 'f', 'lb', 'ub', 'slacks', 'res', ...
-         'train_exm_ids', 'holdout_exm_ids');
+         'train_exm_ids', 'holdout_exm_ids', 'progress');
 
     if PAR.verbose>=2,
       eval(sprintf('%s(state_model, score_plifs, PAR, transition_scores);', ...
@@ -350,6 +357,7 @@ for iter=1:PAR.max_num_iter,
     opt_close(opt_env);
     return
   end
+  iter = iter + 1;
 end
 
 % eof

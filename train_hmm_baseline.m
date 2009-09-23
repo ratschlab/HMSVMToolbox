@@ -120,8 +120,7 @@ end
 
 
 %%%%% assemble model and score function structs,
-LABELS = eval(sprintf('%s;', ...
-                      PAR.model_config.func_get_label_set));
+LABELS = eval(sprintf('%s;', PAR.model_config.func_get_label_set));
 state_model = eval(sprintf('%s(PAR);', ...
                            PAR.model_config.func_make_model));
 
@@ -152,7 +151,8 @@ progress = [];
 trn_acc = zeros(1,length(train_exm_ids));
 % accuracy on holdout validation examples
 val_acc = zeros(1,length(holdout_exm_ids));
-
+% record elapsed time
+t_start = clock();
 
 tic
 % compute mapping (features, states) -> position in one-dimensional vector
@@ -216,6 +216,9 @@ for i=1:size(res_map,1), % for all features
     end
   end
 end
+
+progress.el_time = etime(clock(), t_start);
+
 
 %%% check prediction accuracy on training examples
 for j=1:length(train_exm_ids),

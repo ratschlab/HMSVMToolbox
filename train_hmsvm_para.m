@@ -41,7 +41,7 @@ if ~exist('signal', 'var'),
   if isequal(fn_data(end-3:end), '.mat'),
     fn_data = fn_data(1:end-4);
   end
-  fn_data = [fn_data '_signal']
+  fn_data = [fn_data '_signal'];
   signal = load_struct(fn_data, 'signal');
 end
 
@@ -50,7 +50,7 @@ if ~exist('exm_id', 'var'),
  assert(exist('exm_id_intervals', 'var') ~= 0);
 else
   unq_exm_id = unique(exm_id);
-  exm_id_intervals = zeros(unq_exm_id,3);
+  exm_id_intervals = zeros(length(unq_exm_id),3);
   for i=1:length(unq_exm_id),
     idx = find(exm_id==unq_exm_id(i));
     exm_id_intervals(i,:) = [unq_exm_id(i), idx(1), idx(end)];
@@ -107,9 +107,8 @@ fprintf('using %i sequences for performance estimation.\n\n', ...
 
 
 %%%%% assemble model and score function structs,
-state_model = eval(sprintf('%s(PAR);', ...
-                           PAR.model_config.func_make_model));
-
+LABELS = eval(sprintf('%s();', PAR.model_config.func_get_label_set));
+state_model = eval(sprintf('%s(PAR);', PAR.model_config.func_make_model));
 [score_plifs transition_scores] = eval(sprintf('%s(signal, label, state_model, PAR);', ...
                                                PAR.model_config.func_init_parameters));
 assert(~any(isnan([score_plifs.limits])));
@@ -159,6 +158,8 @@ progress = [];
 trn_acc = zeros(1,length(train_exm_ids));
 % previous value of the objective function
 last_obj = 0;
+% reorder examples (some options may be useful to optimally package jobs)
+train_exm_ids = reorder_examples(train_exm_ids, exm_id_intervals, 'long_first');
 % record elapsed time
 t_start = clock();
 
@@ -212,22 +213,11 @@ while iter<=PAR.max_num_iter,
       k = 0;
     end
     k = k+1;
-  else
-    idx = find(exm_id_intervals(:,1)==train_exm_ids(i));
-    idx = exm_id_intervals(idx,2):exm_id_intervals(idx,3);
-    ARGS.obs_seq = signal(:,idx);
-    ARGS.true_label_seq = label(idx);
-    ARGS.true_state_seq = state_label(idx);
-    if PAR.submit_path > 0,
-      jobinfo(i) = rproc('gen_path', ARGS, rproc_memreq, rproc_opt, rproc_time);
-    else
-      path_result{i} = gen_path(ARGS);
-    end
   end
   
   %%% collect the result from finished jobs
   %%% crasehd jobs will simply be ignored (for the corresponding examples,
-  %no constraints will be generated in this iteration)
+  %%% no constraints will be generated in this iteration)
   [jobinfo, num_crashed] = rproc_wait(jobinfo, 10, 1, 0);
   if num_crashed > 0,
     fprintf('%i jobs crashed\n', num_crashed);
@@ -257,8 +247,13 @@ while iter<=PAR.max_num_iter,
       continue
     end
 
-    trn_acc(i) = mean(path_result{i}.true_path.label_seq ...
-                      == path_result{i}.pred_path.label_seq);
+    if isfield(LABELS, 'ambiguous')
+      eval_idx = path_result{i}.true_path.label_seq ~= LABELS.ambiguous;
+    else
+      eval_idx = logical(ones(size(path_result{i}.true_path.label_seq)));      
+    end
+    trn_acc(i) = mean(path_result{i}.true_path.label_seq(eval_idx) ...
+                      == path_result{i}.pred_path.label_seq(eval_idx));
 
     weight_delta = path_result{i}.w_p - path_result{i}.w_n;
     assert(length(weight_delta) == PAR.num_param);
@@ -275,7 +270,7 @@ while iter<=PAR.max_num_iter,
       v(i) = 1;
       A = [A; -weight_delta, zeros(1, PAR.num_aux), -v];
       b = [b; -loss];
-      new_constraints(i) = 1;    
+      new_constraints(i) = 1;
     end
     
     if PAR.verbose > 2,
@@ -386,8 +381,6 @@ while iter<=PAR.max_num_iter,
   %%% the change of the objective function over the last three iterations
   %%% was unsubstantial
   if all(new_constraints==0), ...
-        || (iter>3 && ~isempty(progress(iter-3).objective) ...
-            && obj-progress(iter-3).objective < obj*PAR.min_rel_obj_change),
     fprintf('Saving final result...\n\n\n');
     fname = sprintf('lsl_final');
     save([PAR.out_dir fname], 'PAR', 'state_model', 'score_plifs', 'transition_scores', ...
