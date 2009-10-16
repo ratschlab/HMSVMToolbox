@@ -380,7 +380,9 @@ while iter<=PAR.max_num_iter,
   %%% save and terminate training if no more constraints are generated or
   %%% the change of the objective function over the last three iterations
   %%% was unsubstantial
-  if all(new_constraints==0), ...
+  if all(new_constraints==0) ...
+        || (iter>3 && obj-progress(iter-3).objective < obj*PAR.min_rel_obj_change),
+
     fprintf('Saving final result...\n\n\n');
     fname = sprintf('lsl_final');
     save([PAR.out_dir fname], 'PAR', 'state_model', 'score_plifs', 'transition_scores', ...

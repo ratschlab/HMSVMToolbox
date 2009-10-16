@@ -116,10 +116,18 @@ assert(~any(isnan([score_plifs.scores])));
 assert(~any(isnan(transition_scores)));
 
 %%%%% determine the true state sequence for each example from its label sequence
+if isfield(PAR, 'label_noise_prop') && PAR.label_noise_prop > 0,
+  noise_cnt = 0;
+end
 for i=1:length(train_exm_ids),
   idx = find(exm_id_intervals(:,1)==train_exm_ids(i));
   assert(~isempty(idx));
   idx = exm_id_intervals(idx,2):exm_id_intervals(idx,3);
+
+  if isfield(PAR, 'label_noise_prop') && PAR.label_noise_prop > 0,
+    [label(idx) cnt] = add_label_noise(label(idx), PAR);
+    noise_cnt = noise_cnt + cnt;
+  end  
   true_label_seq = label(idx);
   obs_seq = signal(:,idx);
   true_state_seq = eval(sprintf('%s(true_label_seq, state_model, obs_seq, PAR);', ...
@@ -129,6 +137,11 @@ for i=1:length(train_exm_ids),
   end
   state_label(idx) = true_state_seq;
 end
+if isfield(PAR, 'label_noise_prop') && PAR.label_noise_prop > 0,
+  fprintf('  converted %i segments (label noise level: %2.1f%%)\n', noise_cnt, ...
+          100*PAR.label_noise_prop);
+end
+
 
 %%%%% inititialize optimization problem 
 opt_env = opt_license(1);
@@ -163,6 +176,10 @@ t_start = clock();
 if PAR.verbose > 0 && PAR.check_acc > 0,
   fh1 = figure;
 end
+
+idx = find(ismember(exm_id_intervals(:,1), train_exm_ids));
+L = sum(exm_id_intervals(idx,3) - exm_id_intervals(idx,2) + 1);
+fprintf('\nTraining on sequences with a total length of %i\n', L);
 
 while iter<=PAR.max_num_iter,
   fprintf('\n\nIteration %i (%s):\n', iter, datestr(now,'yyyy-mm-dd_HHhMM'));
@@ -338,7 +355,9 @@ while iter<=PAR.max_num_iter,
   %%% save and terminate training if no more constraints are generated or
   %%% the change of the objective function over the last three iterations
   %%% was unsubstantial
-  if all(new_constraints==0), ...
+  if all(new_constraints==0) ...
+        || (iter>3 && obj-progress(iter-3).objective < obj*PAR.min_rel_obj_change),
+
     fprintf('Saving final result...\n\n\n');
     fname = sprintf('lsl_final');
     save([PAR.out_dir fname], 'PAR', 'state_model', 'score_plifs', 'transition_scores', ...

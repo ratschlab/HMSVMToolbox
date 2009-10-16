@@ -131,8 +131,15 @@ assert(~any(isnan([score_plifs.scores])));
 assert(~any(isnan(transition_scores)));
 
 %%%%% determine the true state sequence for each example from its label sequence
+if isfield(PAR, 'label_noise_prop') && PAR.label_noise_prop > 0,
+  noise_cnt = 0;
+end
 for i=1:length(train_exm_ids),
   idx = find(exm_id==train_exm_ids(i));
+  if isfield(PAR, 'label_noise_prop') && PAR.label_noise_prop > 0,
+    [label(idx) cnt] = add_label_noise(label(idx), PAR);
+    noise_cnt = noise_cnt + cnt;
+  end 
   true_label_seq = label(idx);
   obs_seq = signal(:,idx);
   true_state_seq = eval(sprintf('%s(true_label_seq, state_model, obs_seq, PAR);', ...
@@ -141,6 +148,10 @@ for i=1:length(train_exm_ids),
     assert(check_path(true_state_seq, state_model));
   end
   state_label(idx) = true_state_seq;
+end
+if isfield(PAR, 'label_noise_prop') && PAR.label_noise_prop > 0,
+  fprintf('  converted %i segments (label noise level: %2.1f%%)\n', noise_cnt, ...
+          100*PAR.label_noise_prop);
 end
 
 
@@ -197,6 +208,17 @@ for i=1:length(train_exm_ids),
 end
 fprintf('Decoded %i training sequences\n\n', length(train_exm_ids));
 fprintf('Decoding took %3.2f sec\n\n', toc);
+
+
+%%% add pseudo counts
+if ~isfield(PAR, 'hmm_pseudo_cnt');
+  pseudo_cnt = 1;
+else
+  pseudo_cnt = PAR.hmm_pseudo_cnt;  
+end
+W(W<pseudo_cnt) = pseudo_cnt;
+% this does not work as well
+%W = W + pseudo_cnt;
 
 %%% compute transition scores as transition frequencies
 for i=1:length(state_model),
