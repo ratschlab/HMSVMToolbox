@@ -32,7 +32,8 @@ How to install the HM-SVM toolbox?
 
 4) Train 2-state HM-SVM
   
-  Call the matlab script setup_hmsvm_training.m which reads data from
+  Call the matlab script main.m with argument as 'cplex' or 'mosek' depending
+  on the desired optimizer. main.m calls setup_hmsvm_training.m which reads data from
   ~/hmsvm_toydata/hmsvm_data.mat and writes the trained HM-SVM (as
   well as intermediate results) to ~/hmsvm_toydata/segmentation/
   (directory is created if not existent).
