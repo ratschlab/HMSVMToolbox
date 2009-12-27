@@ -1,0 +1,2 @@
+In the opt_license.m script license and library paths 
+have to be adjusted for Mosek to work properly
