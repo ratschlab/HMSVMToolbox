@@ -60,6 +60,7 @@ for i=1:size(parameters,1),
   PAR.num_plif_nodes = 20;                         % number of supporting points
                                                    % for each scoring function
   PAR.constraint_margin = 10;                      % use heuristic training procedure
+  PAR.optimizer = inp_optimizer;
   
   % parameters which vary across HM-SVM training runs
   fprintf('Training model %i...\n', i);

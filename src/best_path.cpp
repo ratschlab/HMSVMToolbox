@@ -132,9 +132,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	  }
 	}
       }
-      if (trans_possible == -1) {
-	mexErrMsgTxt("invalid transition scores");
-      }
+//      if (trans_possible == -1) {
+//	mexErrMsgTxt("invalid transition scores");
+//      }
 //      printf("p=%i, t=%i, dpm[p][t]=%f\n", p, t, dpm[p][t]);
     }
   }
