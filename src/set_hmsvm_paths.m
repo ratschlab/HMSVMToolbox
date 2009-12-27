@@ -6,3 +6,5 @@
 
 % path to the Shogun toolbox needed for Viterbi decoding
 addpath /fml/ag-raetsch/share/software/matlab_tools/shogun
+addpath '/fml/ag-raetsch/home/pramod/ag-raetsch/tools/utils_octave/mosek_interface/src.5'
+

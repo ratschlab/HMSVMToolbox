@@ -20,8 +20,9 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
-
+#include <stdio.h>
 #include "mex.h"
+
 #include "score_plif_struct.h"
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {		  
@@ -71,10 +72,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 
   const int LEN = N_scr;        // length of the given example
   const int NUM_STATES = M_scr; // number of states
-  assert(M_p == NUM_STATES);
-  assert(M_q == NUM_STATES);
-  assert(M_A == NUM_STATES);
-  assert(N_A == NUM_STATES);
+//  assert(M_p == NUM_STATES);
+//  assert(M_q == NUM_STATES);
+//  assert(M_A == NUM_STATES);
+//  assert(N_A == NUM_STATES);
 
   // start dynamic programming
 //  printf("filling dynamic programmming matrix...\n");
@@ -164,8 +165,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     opt_path[p-1] = trb[p][opt_path[p]];
   }
 
-  assert(p[opt_path[1]] > -INF);
-  assert(q[opt_path[LEN-1]] > -INF);
+//  assert(p[opt_path[1]] > -INF);
+//  assert(q[opt_path[LEN-1]] > -INF);
 
   // prepare return values
 //  fprintf(stderr, "writing return values...\n");

@@ -27,10 +27,22 @@ end
 
 num_plif_nodes = length(score_plifs(1,1).scores);
 plif_weights = zeros(size(obs_seq,1), length(state_model), num_plif_nodes);
+
+% for f=1:size(obs_seq,1), % for all features
+%   for i=1:size(obs_seq,2), % for all observation positions
+%     plif_weights(f,state_seq(i),:) = add_frac_vec(plif_weights(f,state_seq(i),:), ...
+%                                                   obs_seq(f,i), ...
+%                                                   score_plifs(f,state_seq(i)).limits);
+%   end
+% end
 for f=1:size(obs_seq,1), % for all features
-  for i=1:size(obs_seq,2), % for all observation positions
-    plif_weights(f,state_seq(i),:) = add_frac_vec(plif_weights(f,state_seq(i),:), ...
-                                                  obs_seq(f,i), ...
-                                                  score_plifs(f,state_seq(i)).limits);
-  end
+   num_col = size(score_plifs(1,state_seq(1)).limits, 2);
+   num_row = size(obs_seq, 2);
+   tempB = transpose(reshape(cell2mat({score_plifs(1,state_seq(:)).limits}),num_col,num_row));
+   tempA = zeros(num_row, num_col);
+   for a=1:num_col, 
+      tempA(:,a)=obs_seq(1,:); 
+   end
+
+   plif_weights(f,state_seq(:),:) = add_frac_vec(plif_weights(f,state_seq(:),:), tempA, tempB);
 end

@@ -1,4 +1,3 @@
-
 function [res, lambda, how] = qp_solve(opt_env, Q, f, A, b, lb, ub, neq, display, method);
 
 % split constraint matrix into equality and inequality constraints
@@ -11,8 +10,6 @@ A(1:neq,:) = []; %inequality constraints
 b(1:neq) = []; %inequality constraints
 
 
-% __mosek_qp_ (x0, P, q, A, b, lb, ub, A_lb, A_in, A_ub)
-% 
 % Explanation:
 %
 %  x0   - the initial solution
@@ -28,28 +25,17 @@ b(1:neq) = []; %inequality constraints
 % A_lb  - lower bound for inequality constraints
 % A_in  - Matrix representing inequality constraints
 % A_ub  - upper bound for inequality constraints
-%
-%
-% The MOSEK representation is equivalent
-%
-
-% method is ignored
-% Mosek will always use interior point method
-
-[x, obj, INFO, lambda] =  __mosek_qp__ ([],Q, f, B, c, lb, ub, b*0, A, b);
+dbstop
+printf('Starting qp_solve using octave-inbuilt optimizer\n');
+[x,obj,INFO,lambda] =  qp([], Q, f, B, c, lb, ub, b*0, A, b);
 
 % solution vector
 %keyboard
-%res = r.sol.itr.xx;
 res = x;
-% % constraint solution vector
-%lambda = r.sol.itr.xc;
-% 
 % % error message / return status
 if INFO < 6
   how = 'OK';
 else
   how = INFO;
 end
-
 % eof

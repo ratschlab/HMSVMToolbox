@@ -11,7 +11,7 @@ function progress = train_hmsvm(PAR)
 % written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany, 2008
 
 % adjust set_hmsvm_paths.m to point to the correct directories
-set_hmsvm_paths();
+set_hmsvm_paths;
 
 % include user-specified include paths
 if isfield(PAR, 'include_paths'),
@@ -335,7 +335,7 @@ for iter=1:PAR.max_num_iter,
     
     if PAR.verbose>=3 && j<=25,
       view_label_seqs(gcf, trn_obs_seq, trn_true_label_seq, trn_pred_label_seq);
-      title(gca, ['Training example ' num2str(train_exm_ids(j))]);
+      title(['Training example ' num2str(train_exm_ids(j))]);
       fprintf('Training example %i\n', train_exm_ids(j));
       fprintf('  Example accuracy: %3.2f%%\n', 100*trn_acc(j));
       pause
