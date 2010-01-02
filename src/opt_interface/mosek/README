@@ -1,2 +1,1 @@
-In the opt_license.m script license and library paths 
-have to be adjusted for Mosek to work properly
+Mosek is used via a wrapper. The wrapper should be downloaded and the path set properly in set_hmsvm_paths.m

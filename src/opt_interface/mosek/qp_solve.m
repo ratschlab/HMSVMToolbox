@@ -11,6 +11,7 @@ A(1:neq,:) = []; %inequality constraints
 b(1:neq) = []; %inequality constraints
 
 
+
 % __mosek_qp_ (x0, P, q, A, b, lb, ub, A_lb, A_in, A_ub)
 % 
 % Explanation:
@@ -35,21 +36,15 @@ b(1:neq) = []; %inequality constraints
 
 % method is ignored
 % Mosek will always use interior point method
-
-[x, obj, INFO, lambda] =  __mosek_qp__ ([],Q, f, B, c, lb, ub, b*0, A, b);
-
-% solution vector
-%keyboard
-%res = r.sol.itr.xx;
-res = x;
-% % constraint solution vector
-%lambda = r.sol.itr.xc;
+[res, obj] =  __mosek_qp__ ([], Q, f, B, c, lb, ub, -10000000*abs(b), A, b);
+obj
+lambda = 0;
 % 
 % % error message / return status
-if INFO < 6
-  how = 'OK';
-else
-  how = INFO;
-end
+%if INFO == 0,
+how = 'OK';
+%else
+%  how = INFO;
+%end
 
 % eof

@@ -14,12 +14,11 @@ How to install the HM-SVM toolbox?
 
 2) Adjust and compile solver interface
 
-  If you want to use the CPLEX otimizer, compile its interface
-  (see README file in opt_interface/cplex/).
-
   The interface for the Mosek optimizer does not need compilation,
   it should run right away once library and license paths have been 
   set properly ((see README file in opt_interface/mosek/).
+  Mosek is used via the mosek wrapper for octave. The paths to that
+  should be set in set_hmsvm_paths.m
   
   For more details see the README files in the opt_interface 
   subdirectories cplex and/or mosek.
@@ -32,8 +31,8 @@ How to install the HM-SVM toolbox?
 
 4) Train 2-state HM-SVM
   
-  Call the octave script main(<optimizer>) where <optimizer> is 
-  a string which is one of the following:
+  Call the octave script main.m by the command main(<optimizer>) 
+  where <optimizer> is a string which is one of the following:
         a) 'octave' -- to use Octave's inbuilt qp function
         b) 'mosek' -- to use mosek
         C) 'cplex' -- to use cplex

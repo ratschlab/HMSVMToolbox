@@ -26,6 +26,7 @@ if ~isfield(PAR, 'extra_checks'),
 end
 
 % option to control the amount of output
+PAR.verbose = 0;
 if ~isfield(PAR, 'verbose'),
   PAR.verbose = 3;
 end
@@ -220,6 +221,7 @@ t_start = clock();
 for iter=1:PAR.max_num_iter,
   new_constraints = zeros(1,PAR.num_train_exm);
   tic
+  fprintf('Generating constraints...\n');
   for i=1:length(train_exm_ids)
     idx = find(exm_id==train_exm_ids(i));
     obs_seq = signal(:,idx);
@@ -325,6 +327,7 @@ for iter=1:PAR.max_num_iter,
                                                    score_plifs, PAR);
   
   %%% check prediction accuracy on training examples
+  fprintf('Checking prediction accuracy on training examples... ');
   for j=1:length(train_exm_ids),
     trn_idx = find(exm_id==train_exm_ids(j));
     trn_obs_seq = signal(:,trn_idx);
@@ -334,13 +337,16 @@ for iter=1:PAR.max_num_iter,
     trn_acc(j) = mean(trn_true_label_seq(1,:)==trn_pred_label_seq(1,:));
     
     if PAR.verbose>=3 && j<=25,
-      view_label_seqs(gcf, trn_obs_seq, trn_true_label_seq, trn_pred_label_seq);
-      title(['Training example ' num2str(train_exm_ids(j))]);
+      %view_label_seqs(gcf, trn_obs_seq, trn_true_label_seq, trn_pred_label_seq);
+      %title(['Training example ' num2str(train_exm_ids(j))]);
       fprintf('Training example %i\n', train_exm_ids(j));
       fprintf('  Example accuracy: %3.2f%%\n', 100*trn_acc(j));
-      pause
+      %pause
     end
   end
+  fprintf (' done!\n');
+  fflush(stdout);
+
   fprintf(['\nIteration %i:\n' ...
            '  LSL training accuracy:              %2.2f%%\n'], ...
           iter, 100*mean(trn_acc));
@@ -348,6 +354,7 @@ for iter=1:PAR.max_num_iter,
   
   %%% check prediction accuracy on holdout examples
   if ~isempty(holdout_exm_ids),
+    fprintf('Checking prediction accuracy on holdout examples... ');
     for j=1:length(holdout_exm_ids),
       val_idx = find(exm_id==holdout_exm_ids(j));
       val_obs_seq = signal(:,val_idx);
@@ -358,12 +365,13 @@ for iter=1:PAR.max_num_iter,
       
       if PAR.verbose>=3 && j<=25,
         view_label_seqs(gcf, val_obs_seq, val_true_label_seq, val_pred_label_seq);
-        title(gca, ['Hold-out example ' num2str(holdout_exm_ids(j))]);
+        title(['Hold-out example ' num2str(holdout_exm_ids(j))]);
         fprintf('Hold-out example %i\n', holdout_exm_ids(j));
         fprintf('  Example accuracy: %3.2f%%\n', 100*val_acc(j));
         pause
       end
     end
+    fprintf(' done!\n');
     fprintf(['  LSL validation accuracy:            %2.2f%%\n\n'], ...
             100*mean(val_acc));
     progress(iter).val_acc = val_acc';
