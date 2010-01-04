@@ -25,11 +25,11 @@ if nargin<2,
 end
 
 %%% Adjust this to your local CPLEX license manager
-opt_license_path = '/fml/ag-raetsch/share/software/ilog/licenses/';
-opt_license_env = {['ILOG_LICENSE_FILE=' opt_license_path 'access-820980.ilm']};
+opt_license_file = '/fml/ag-raetsch/share/software/ilog/licenses/access-820980.ilm';
+opt_license_env = {['ILOG_LICENSE_FILE=' opt_license_file]};
 
-if ~exist(opt_license_env, 'file')
-  error('license file %s does not exist, please change path/filename in opt_license.m', opt_license_env) ;
+if ~exist(opt_license_file, 'file')
+  error('license file %s does not exist, please change path/filename in opt_license.m', opt_license_file) ;
 end ;
 
 if license_no == -1,

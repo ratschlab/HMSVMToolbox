@@ -15,7 +15,7 @@ function vec = add_frac_vec(vec, value, limits)
 % limits -- a vector of length n specifying intervals corresponding to
 %   adjacent components of vec
 %
-% written by Gunnar Raetsch & Georg Zeller, MPI Tuebingen, Germany, 2008
+% written by Gunnar Raetsch, Georg Zeller, Pramod Mudrakarta, MPI Tuebingen, Germany, 2008
 
 %assert(~any(isnan(limits)));
 %assert(~any(isinf(limits)));
@@ -44,11 +44,11 @@ for i=1:length(nidx),
    nidx(i) = size(limits,2)*(i-1) + nidx(i);
 end
 
-tempA = (transpose(value(:,1)) - transpose(limits)(nidx))./(transpose(limits)(nidx+1) - transpose(limits)(nidx));
-tempA = (idx != 0 && idx != size(limits,2)) .* tempA;
+tempA = (transpose(value(:,1)) - limits(nidx))./(limits(nidx+1) - limits(nidx));
+tempA = (idx ~= 0 & idx ~= size(limits,2)) .* tempA;
 
-tempB = (transpose(limits)(nidx+1) - transpose(value(:,1))) ./ (transpose(limits)(nidx+1) - transpose(limits)(nidx));
-tempB = (idx != 0 && idx != size(limits,2)) .* tempB;
+tempB = (limits(nidx+1) - transpose(value(:,1))) ./ (limits(nidx+1) - limits(nidx));
+tempB = (idx ~= 0 & idx ~= size(limits,2)) .* tempB;
 
 for x=2:size(limits,2)-1,
    vec(:,:,x+1) = vec(:,:,x+1) + tempA;

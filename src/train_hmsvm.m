@@ -345,7 +345,7 @@ for iter=1:PAR.max_num_iter,
     end
   end
   fprintf (' done!\n');
-  fflush(stdout);
+  %fflush(stdout);
 
   fprintf(['\nIteration %i:\n' ...
            '  LSL training accuracy:              %2.2f%%\n'], ...

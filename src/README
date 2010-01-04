@@ -3,7 +3,7 @@ How to install the HM-SVM toolbox?
 
 1) Create mex files
 
-  Run the mex compiler as follows:
+  Run the mex compiler as follows (on Matlab or Octave command line):
 
   mex compute_score_matrix.cpp score_plif_struct.cpp
   and
@@ -16,7 +16,7 @@ How to install the HM-SVM toolbox?
 
   The interface for the Mosek optimizer does not need compilation,
   it should run right away once library and license paths have been 
-  set properly ((see README file in opt_interface/mosek/).
+  set properly (see README file in opt_interface/mosek/).
   Mosek is used via the mosek wrapper for octave. The paths to that
   should be set in set_hmsvm_paths.m
   
