@@ -2,9 +2,19 @@
 %
 % see train_hmsvm.m
 %
-% written by Georg Zeller, MPI Tuebingen, Germany, 2008
 
-% path to the Shogun toolbox needed for Viterbi decoding
-addpath /fml/ag-raetsch/share/software/matlab_tools/shogun
-addpath '/fml/ag-raetsch/home/pramod/ag-raetsch/tools/utils_octave/mosek_interface/src.5'
-addpath '/fml/ag-raetsch/home/pramod/ag-raetsch/tools/utils_octave/mosek_interface/inst'
+% setting paths for mosek/octave version 5
+%addpath opt_interface/mosek
+%addpath opt_interface/mosek/src.5
+
+% setting paths for mosek/octave version 6
+%addpath opt_interface/mosek
+%addpath opt_interface/mosek/src.6
+
+% setting paths for cplex/matlab
+%addpath opt_interface/cplex
+
+
+% setting paths for native LP/QP solver
+%addpath opt_interface/native
+

@@ -67,4 +67,3 @@ end
 data_file = [data_dir 'hmsvm_data.mat'];
 save(data_file, 'label', 'signal', 'pos_id', 'exm_id', 'subset_id');
 
-keyboard
