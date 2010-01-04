@@ -1,0 +1,4 @@
+To compile the octave mosek interface:
+
+1. download Mosek version 5 and copy the directory linux64x86 into this directory
+2. type make

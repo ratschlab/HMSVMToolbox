@@ -6,7 +6,7 @@ LIBS = linux64x86/bin
 CXXFLAGS=-Wall -Wshadow -std=c++98 -ggdb -O3 -fPIC
 CXXFLAGS2=-Wall -std=c++98 -ggdb -O3 -fPIC
 
-MKOCT=~/octave/bin/mkoctfile
+MKOCT=mkoctfile
 
 all:
 	@ echo "Starting ${PROJ} creation..."
