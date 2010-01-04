@@ -1,1 +1,2 @@
-Mosek is used via a wrapper. The wrapper should be downloaded and the path set properly in set_hmsvm_paths.m
+Mosek is used via a wrapper located in src.5 for Mosek version 5 and src.6 for Mosek version 6. 
+The path set properly in set_hmsvm_paths.m

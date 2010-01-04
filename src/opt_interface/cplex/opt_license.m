@@ -26,12 +26,11 @@ end
 
 %%% Adjust this to your local CPLEX license manager
 opt_license_path = '/fml/ag-raetsch/share/software/ilog/licenses/';
-opt_license_env = {...
-    ['ILOG_LICENSE_FILE=' opt_license_path 'access-820980.ilm'], ...
-    ['ILOG_LICENSE_FILE=' opt_license_path 'access-703040.ilm'], ...
-    ['ILOG_LICENSE_FILE=' opt_license_path 'access-587380.ilm'], ...
-                  };
+opt_license_env = {['ILOG_LICENSE_FILE=' opt_license_path 'access-820980.ilm']};
 
+if ~exist(opt_license_env, 'file')
+  error('license file %s does not exist, please change path/filename in opt_license.m', opt_license_env) ;
+end ;
 
 if license_no == -1,
   envstr = getenv('ILOG_LICENSE_FILE');
