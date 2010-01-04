@@ -26,27 +26,30 @@ How to install the HM-SVM toolbox?
 3) Generate simulated toy data for 2-state HM-SVM model
 
   Execute the matlab script simulate_data.m in the models/two_state/
-  subdirectory. It writes the data to ~/hmsvm_toydata/hmsvm_data.mat
-  (directory is created if non-existent).
+  subdirectory. It writes the data to hmsvm_toydata/hmsvm_data.mat
+  (directory is created if non-existent):
+
+  Execute:
+
+	addpath models/two_state; 
+	simulate_data
 
 4) Train 2-state HM-SVM
   
   Call the octave script main.m by the command main(<optimizer>) 
   where <optimizer> is a string which is one of the following:
-        a) 'octave' -- to use Octave's inbuilt qp function
-        b) 'mosek' -- to use mosek
-        C) 'cplex' -- to use cplex
+        a) 'native' -- to use Octave's built-in qp function (Octave only)
+        b) 'mosek' -- to use mosek 
+        C) 'cplex' -- to use cplex (Matlab only)
   
   main.m calls setup_hmsvm_training.m which reads data from
-  ~/hmsvm_toydata/hmsvm_data.mat and writes the trained HM-SVM (as
-  well as intermediate results) to ~/hmsvm_toydata/segmentation/
+  hmsvm_toydata/hmsvm_data.mat and writes the trained HM-SVM (as
+  well as intermediate results) to hmsvm_toydata/segmentation/
   (directory is created if not existent).
 
   This script offers a range of configuration options for HM-SVM
   training thereby also facilitating cross-validation and model
   selection.
-
-
 
 How to specify other state models?
 ----------------------------------
