@@ -32,14 +32,14 @@ parameters = { ...
 assert(size(parameters,2) == length(param_names));
 
 % basic data directory
-dr_base = ['~/hmsvm_toydata/segmentation/'...
+dr_base = ['hmsvm_toydata/segmentation/'...
            'hmsvm_result_' datestr(now,'yyyy-mm-dd_HHhMM')]
 
 % seed for random number generation
 rand('seed', 11081979);
 
 % partition data for cross-validation
-data_file = '~/hmsvm_toydata/hmsvm_data.mat';
+data_file = 'hmsvm_toydata/hmsvm_data.mat';
 load(data_file, 'exm_id');
 exm_id = unique(exm_id);
 exm_id = exm_id(randperm(length(exm_id)));

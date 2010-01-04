@@ -60,7 +60,7 @@ ridx = ridx(1:num_noise_features);
 signal(ridx,:) = noise_std*randn(length(ridx), size(label,2));
 fprintf('noise features: %i\n', ridx);
 
-data_dir = '~/hmsvm_toydata/';
+data_dir = 'hmsvm_toydata/';
 if ~exist(data_dir, 'dir'),
   mkdir(data_dir);
 end

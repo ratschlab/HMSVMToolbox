@@ -16,9 +16,9 @@
 
 
 % setting paths for cplex/matlab
-%addpath opt_interface/cplex
+addpath opt_interface/cplex
 
 
 % setting paths for native LP/QP solver
-addpath opt_interface/native
+%addpath opt_interface/native
 
