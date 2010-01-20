@@ -6,8 +6,10 @@ How to install the HM-SVM toolbox?
   Run the mex compiler as follows:
 
   mex compute_score_matrix.cpp score_plif_struct.cpp
-  and
   mex best_path.cpp
+  mex path_weights.cpp score_plif_struct.cpp
+  and
+  mex compute_loss_matrix.cpp
 
   (Note that Shogun is no longer required for this version 
   of the HM-SVM toolbox)
