@@ -332,7 +332,7 @@ while iter<=PAR.max_num_iter,
       rproc_memreq         = 1700;
       rproc_time           = length(train_exm_ids) + length(holdout_exm_ids);
       rproc('check_accuracy', ARGS, rproc_memreq, rproc_opt, rproc_time);
-     fprintf('Submitted job for performance checking\n\n');
+      fprintf('Submitted job for performance checking\n\n');
    else
       check_accuracy(ARGS);
     end
