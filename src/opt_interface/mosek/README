@@ -1,0 +1,25 @@
+In Matlab, Mosek is used via the matlab mosek toolbox available for download at http://mosek.com
+To install on linux 64bit, execute these commands:
+
+In the directory opt_interface/mosek : 
+
+For Mosek v6:
+        wget http://www.mosek.com/fileadmin/download/stable/6/mosektoolslinux64x86.tar.gz
+        tar xzf mosektoolslinux64x86.tar.gz
+
+In Octave, Mosek is used via a wrapper located in the directory 
+        '...../opt_interface/mosek/mosek_interface/'
+The wrapper should be compiled before it can be used. For that, ensure 
+that the mosek toolbox is downloaded and placed as described above. 
+Also ensure that the Makefile in the mosek_interface directory uses 
+the appropriate 'mkoctfile' binary of Octave.
+Then execute 'make' to compile it.
+
+Set the paths to mosek libraries in opt_license.m
+Ensure that the $MOSEKLM_LICENSE_FILE environment variable points to the MOSEK license on your system.
+
+Ensure that you include 
+        1. (...)/opt_interface/mosek/mosek/6/tools/platform/linux64x86/bin
+        2. (...)/opt_interface/mosek/mosek/6/toolbox/r2007a
+in your LD_LIBRARY_PATH environment variable. Adjust the second, if needed.
+
