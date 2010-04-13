@@ -15,11 +15,11 @@ function opt_env = opt_license(waitflag, license_no)
 
 
 % Comment this line out when done setting the paths
-error('Please set the paths in ...opt_interface/mosek/opt_license.m. Refer ..../opt_license/mosek/README for details');
+%error('Please set the paths in ...opt_interface/mosek/opt_license.m. Refer ..../opt_license/mosek/README for details');
 
-addpath /fml/ag-raetsch/home/pramod/hmsvm/src/opt_interface/mosek/mosek/6/toolbox/r2007a/;
-addpath /fml/ag-raetsch/home/pramod/hmsvm/src/opt_interface/mosek/mosek/6/tools/platform/linux64x86/bin/;
-addpath /fml/ag-raetsch/home/pramod/hmsvm/src/opt_interface/mosek/mosek_interface/;
+addpath /fml/ag-raetsch/share/software/mosek/6/toolbox/r2007a/;
+addpath /fml/ag-raetsch/share/software/mosek/6/tools/platform/linux64x86/bin/;
+addpath opt_interface/mosek/mosek_interface/;
 
 
 opt_env = 0;

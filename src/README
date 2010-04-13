@@ -56,6 +56,10 @@ How to install the HM-SVM toolbox?
   training thereby also facilitating cross-validation and model
   selection.
 
+  Make sure to set the library path correctly before starting matlab or octave, e.g.
+
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/path/to/mosek/6/tools/platform/linux64x86/bin/
+
 
 How to specify other state models?
 ----------------------------------
