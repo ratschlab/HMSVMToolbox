@@ -166,6 +166,8 @@ t_start = clock();
 assert(PAR.submit_batch > 0);
 assert(mod(PAR.num_train_exm, PAR.submit_batch) == 0);
 
+keyboard
+
 while iter<=PAR.max_num_iter,
   fprintf('\n\nIteration %i (%s):\n', iter, datestr(now,'yyyy-mm-dd_HHhMM'));
   new_constraints = zeros(1,PAR.num_train_exm);
@@ -177,9 +179,10 @@ while iter<=PAR.max_num_iter,
   rproc_opt            = [];
   rproc_opt.priority   = 629;
   rproc_opt.identifier = sprintf('hmsvm_path_');
-  rproc_opt.verbosity  = 0;
+  rproc_opt.verbosity  = 1;
   rproc_opt.start_dir  = PAR.include_paths{1};
   rproc_opt.addpaths   = PAR.include_paths;
+  rproc_opt.force_octave=1 ;
   rproc_memreq         = 3700;
   rproc_time           = length(train_exm_ids) + length(holdout_exm_ids);
   
@@ -222,6 +225,7 @@ while iter<=PAR.max_num_iter,
   if num_crashed > 0,
     fprintf('%i jobs crashed\n', num_crashed);
   end
+  %keyboard 
   exm_cnt = 0;
   for k=1:j,
     try

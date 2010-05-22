@@ -64,7 +64,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     for (int f=0; f<scr_M; ++f) {         // for all features
       for (int s=0; s<n_states; ++s) {    // for all states
 	const int scr_idx = s*scr_M+f;
-	assert(scr_ptr[scr_idx].feat_idx==f+1);
+	//assert(scr_ptr[scr_idx].feat_idx==f+1);
 	const int pp_idx = pos*n_states+s;
 	const int X_idx = pos*X_M+f;
 	
