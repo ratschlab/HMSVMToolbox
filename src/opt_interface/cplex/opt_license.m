@@ -26,7 +26,7 @@ end
 
 %%% Adjust this to your local CPLEX license manager
 %%% and comment the error command when done
-%error('Please set the paths to the CPLEX license manager in ..../opt_interface/cplex/opt_license.m');
+error('Please set the paths to the CPLEX license manager in ..../opt_interface/cplex/opt_license.m');
 
 opt_license_path = '/fml/ag-raetsch/share/software/ilog/licenses/';
 opt_license_env = {...
