@@ -331,7 +331,7 @@ void mexFunction(
 	  strcmp(opt_method, "sift") &&
 	  strcmp(opt_method, "con") &&
 	  strcmp(opt_method, "auto"))
-	  mxErrMsgTxt("method \\in " 
+	  mexErrMsgTxt("method \\in " 
 				  "{'auto','primal','dual','bar','net','sift','con'}\n") ;
 
   if (strcmp(opt_method, "primal")==0)

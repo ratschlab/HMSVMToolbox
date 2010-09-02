@@ -67,7 +67,7 @@ save([ARGS.PAR.out_dir fname], 'progress', 'iter');
 t_stop_ac = clock();
 fprintf('Performance checks took %3.2f sec\n\n', etime(t_stop_ac, t_start_ac));
 
-if ARGS.PAR.verbose>=1,
+if ARGS.PAR.verbose>1,
   plot_progress(progress, ARGS.fh1);
   print(ARGS.fh1, '-depsc', [ARGS.PAR.out_dir 'progress.eps']);
   pause(1);

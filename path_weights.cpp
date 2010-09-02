@@ -28,7 +28,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
-
+#include <stdio.h>
 #include "mex.h"
 //#include <matrix.h>
 #include "score_plif_struct.h"
@@ -122,14 +122,17 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     ++trans_weights[p];
   }
 
+
   // create 2nd return argument: 3-dim. array of plif weights
   const int num_dim = 3;
   const int NUM_PLIF_NODES = scr_ptr[0].len;
-  int dims[3];
+  mwSize* dims;
+  dims = (mwSize*) mxMalloc (num_dim * sizeof(mwSize));
+//  int dims[3];
   dims[0] = NUM_FEATS;
   dims[1] = NUM_STATES;
   dims[2] = NUM_PLIF_NODES;
-  plhs[1] = mxCreateNumericArray(num_dim, dims, mxDOUBLE_CLASS, mxREAL);
+  plhs[1] = mxCreateNumericArray(num_dim,dims, mxDOUBLE_CLASS, mxREAL);
   double *plif_weights = mxGetPr(plhs[1]);
   // will already be intialized to 0 by mxCreateNumericArray
 

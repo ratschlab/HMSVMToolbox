@@ -69,7 +69,10 @@ for i=1:length(state_model),
   idx_2 = state_model(i).successors(idx_1);
   for j=1:length(idx_1),
     % assign score indices
-    state_model(i).trans_scores(idx_1(j)) = q;
+    cslist_temp = state_model(i).trans_scores;
+    cslist_temp(idx_1(j)) = q;
+    state_model(i).trans_scores = cslist_temp;
+
     A(i, idx_2(j)) = transition_scores(q);
     q = q + 1;
   end

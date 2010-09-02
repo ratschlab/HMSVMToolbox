@@ -11,7 +11,7 @@ function progress = train_hmsvm(PAR)
 % written by Georg Zeller & Gunnar Raetsch, MPI Tuebingen, Germany, 2008
 
 % adjust set_hmsvm_paths.m to point to the correct directories
-set_hmsvm_paths();
+set_hmsvm_paths;
 
 % include user-specified include paths
 if isfield(PAR, 'include_paths'),
@@ -173,7 +173,7 @@ trn_acc = zeros(1,length(train_exm_ids));
 last_obj = 0;
 % record elapsed time
 t_start = clock();
-if PAR.verbose > 0 && PAR.check_acc > 0,
+if PAR.verbose > 1 && PAR.check_acc > 0,
   fh1 = figure;
 end
 
@@ -319,7 +319,7 @@ while iter<=PAR.max_num_iter,
     ARGS.score_plifs = score_plifs;
     ARGS.progress = progress;
     ARGS.iter = iter;
-    if PAR.verbose > 0,
+    if PAR.verbose > 1,
       ARGS.fh1 = fh1;
     end
     if PAR.submit_vald > 0,
@@ -347,7 +347,7 @@ while iter<=PAR.max_num_iter,
   if mod(iter,5)==0,
     fprintf('Saving intermediate result...\n\n\n');
     fname = sprintf('lsl_iter%i', iter);
-    save([PAR.out_dir fname], 'PAR', 'state_model', 'score_plifs', 'transition_scores', ...
+    save('-v7',[PAR.out_dir fname], 'PAR', 'state_model', 'score_plifs', 'transition_scores', ...
          'trn_acc', 'A', 'b', 'Q', 'f', 'lb', 'ub', 'slacks', 'res', ...
          'train_exm_ids', 'holdout_exm_ids', 'progress');
   end
@@ -360,7 +360,7 @@ while iter<=PAR.max_num_iter,
 
     fprintf('Saving final result...\n\n\n');
     fname = sprintf('lsl_final');
-    save([PAR.out_dir fname], 'PAR', 'state_model', 'score_plifs', 'transition_scores', ...
+    save('-v7',[PAR.out_dir fname], 'PAR', 'state_model', 'score_plifs', 'transition_scores', ...
          'trn_acc', 'A', 'b', 'Q', 'f', 'lb', 'ub', 'slacks', 'res', ...
          'train_exm_ids', 'holdout_exm_ids', 'progress');
 

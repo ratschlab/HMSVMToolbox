@@ -14,18 +14,29 @@ b(1:neq) = [];
 % TODO use the 'display' parameter to adjust the amount of output
 %r = mskqpopt(Q, f, A, [], b, lb, ub, [], sprintf('echo(%i)', display));
 
-r = mskqpopt(Q, f, A, [], b, lb, ub);
+matlab_check = ver('MATLAB');
+octave_check = ver('Octave');
+
+if (sum(size(matlab_check)) > 0),
+   r = mskqpopt(Q, f, A, [], b, lb, ub);
+   res = r.sol.itr.xx;
+   lambda = r.sol.itr.xc;
+   how = 'OK';
+elseif (sum(size(octave_check)) > 0),
+   [res,obj] = mosek_qp ([],Q,f,B,c,lb,ub,-1000+abs(b),A,b);
+   how = 'OK';
+   lambda = 0;
+else
+   error('Software supported only on MATLAB and Octave');
+end
 
 % solution vector
-res = r.sol.itr.xx;
 % constraint solution vector
-lambda = r.sol.itr.xc;
 
 % error message / return status
-if r.rmsg == 'No error occurred.',
-  how = 'OK';
-else
-  how = r.rmsg;
-end
+%if r.rmsg == 'No error occurred.',
+%else
+%  how = r.rmsg;
+%end
 
 % eof

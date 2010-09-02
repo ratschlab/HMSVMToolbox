@@ -12,11 +12,14 @@ function opt_env = opt_license(waitflag, license_no)
 %
 % written by Georg Zeller, MPI Tuebingen, Germany, 2008
 
-setenv('MOSEKLM_LICENSE_FILE', ...
-       '/fml/ag-raetsch/home/zeller/mosek.lic');
-setenv('LD_LIBRARY_PATH', ...
-       '/fml/ag-raetsch/share/software/mosek/5/toolbox/r2007a/');
 
-addpath /fml/ag-raetsch/share/software/mosek/5/toolbox/r2007a
+
+% Comment this line out when done setting the paths
+%error('Please set the paths in ...opt_interface/mosek/opt_license.m. Refer ..../opt_license/mosek/README for details');
+
+addpath /fml/ag-raetsch/home/pramod/octave_new_hmsvm/hmsvm/opt_interface/mosek/mosek/6/toolbox/r2007a/;
+addpath /fml/ag-raetsch/home/pramod/octave_new_hmsvm/hmsvm/opt_interface/mosek/mosek/6/tools/platform/linux64x86/bin/;
+addpath /fml/ag-raetsch/home/pramod/octave_new_hmsvm/hmsvm/opt_interface/mosek/mosek_interface/;
+
 
 opt_env = 0;

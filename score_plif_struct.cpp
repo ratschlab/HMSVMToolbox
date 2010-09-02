@@ -159,12 +159,12 @@ mxArray* write_score_plif_struct(const struct score_plif_struct *SCR,  int &M, i
     int len = SCR[j].len;
     const int dims[] = {1,len};
     
-    mxArray *lim = mxCreateNumericArray(2, dims, mxDOUBLE_CLASS, mxREAL);
+    mxArray *lim = mxCreateNumericArray(2, (const mwSize*) dims, mxDOUBLE_CLASS, mxREAL);
     double *lim_ptr = mxGetPr(lim);
     memcpy(lim_ptr, SCR[j].limits, len*mxGetElementSize(lim));
     mxSetField(ret, j, field_names[0], lim);
     
-    mxArray *scr = mxCreateNumericArray(2, dims, mxDOUBLE_CLASS, mxREAL);
+    mxArray *scr = mxCreateNumericArray(2,(const mwSize*) dims, mxDOUBLE_CLASS, mxREAL);
     double *scr_ptr = mxGetPr(scr);
     memcpy(scr_ptr, SCR[j].scores, len*mxGetElementSize(scr));
     mxSetField(ret, j, field_names[1], scr);
@@ -172,7 +172,7 @@ mxArray* write_score_plif_struct(const struct score_plif_struct *SCR,  int &M, i
     mxArray *dim = mxCreateDoubleScalar(SCR[j].feat_idx);
     mxSetField(ret, j, field_names[2], dim);
     
-    mxArray *wght = mxCreateNumericArray(2, dims, mxDOUBLE_CLASS, mxREAL);
+    mxArray *wght = mxCreateNumericArray(2, (const mwSize*) dims, mxDOUBLE_CLASS, mxREAL);
     double *w_ptr = mxGetPr(wght);
     memcpy(w_ptr, SCR[j].weights, len*mxGetElementSize(wght));
     mxSetField(ret, j, field_names[3], wght);

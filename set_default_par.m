@@ -11,6 +11,9 @@ function PAR = set_default_par(PAR)
 %
 % written by Georg Zeller, MPI Tuebingen, Germany, 2008-2009
 
+
+hmsvm_home = '/fml/ag-raetsch/home/pramod/octave_new_hmsvm/hmsvm';
+
 % option to enable/disable some extra consistency checks
 if ~isfield(PAR, 'extra_checks'),
   PAR.extra_checks = 0;
@@ -67,10 +70,10 @@ end
 % optimization software used to solve the (intermediate) training
 % problem(s). Currently there are two possibilities: 'cplex' or 'mosek'
 if ~isfield(PAR, 'optimizer'),
-  PAR.optimizer = 'cplex' % one of 'cplex' or 'mosek'
+  PAR.optimizer = 'cplex'
   % path to the optimizer interface
-  addpath(sprintf('opt_interface/%s', PAR.optimizer));
 end
+addpath(sprintf([hmsvm_home '/opt_interface/%s'], PAR.optimizer));
 
 % subsample examples for performance checks
 if ~isfield(PAR, 'max_num_vald_exms'),
@@ -83,7 +86,7 @@ if ~isfield(PAR, 'submit_jobs'),
 end
 
 % seed for random number generation
-rand('seed', 111979);
+rand('seed', 11081979);
 
 % mandatory fields of the parameter struct
 assert(isfield(PAR, 'C_small'));

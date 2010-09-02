@@ -7,7 +7,7 @@ For installation, the file opt_license.m has to be modfied such that
 the entries of the opt_license_path cell point to the correct license manager(s).
 
 Adjust the compile_mex.sh script to point to the CPLEX libraries on your system
-and the correct 'mex' binary of MATLAB.
+and the correct 'mkoctfile' binary of Octave
 
 Once these are adjusted, run the compile_mex.sh script to create mex
 files. Now, train_hmsvm.m should be able to use the CPLEX solver.
