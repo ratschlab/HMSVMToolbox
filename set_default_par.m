@@ -12,7 +12,7 @@ function PAR = set_default_par(PAR)
 % written by Georg Zeller, MPI Tuebingen, Germany, 2008-2009
 
 
-hmsvm_home = '/fml/ag-raetsch/home/pramod/octave_new_hmsvm/hmsvm';
+hmsvm_home = '/fml/ag-raetsch/home/pramod/tmp/yetanotherone/hmsvm';
 
 % option to enable/disable some extra consistency checks
 if ~isfield(PAR, 'extra_checks'),
