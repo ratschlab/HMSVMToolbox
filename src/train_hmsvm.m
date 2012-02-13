@@ -248,7 +248,7 @@ for iter=1:PAR.max_num_iter,
       assert(abs(w*res(1:PAR.num_param) - pred_path_mmv.score) < PAR.epsilon);
     end
     trn_acc(i) = mean(true_path.label_seq==pred_path.label_seq);
-
+    keyboard
     w_p = weights_to_vector(true_path.transition_weights, ...
                             true_path.plif_weights, state_model, ...
                             res_map, PAR);
